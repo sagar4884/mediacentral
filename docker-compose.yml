@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mediacentral:
+    build: .
+    container_name: mediacentral
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+    volumes:
+      # Persist SQLite database
+      - ./data/db:/app/backend/prisma
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:./prisma/dev.db

@@ -1,0 +1,91 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model MediaCache {
+  id           String   @id @default(uuid())
+  source       String   // "Radarr" or "Sonarr"
+  sourceId     Int      // ID from Radarr/Sonarr
+  name         String
+  year         Int?
+  sizeOnDisk   BigInt   @default(0) // Bytes
+  tmdbId       Int?
+  tvdbId       Int?
+  path         String?
+  tags         String   // JSON string array of tags
+  keepStatus   String   @default("waiting") // "kept", "waiting", "marked_for_deletion"
+  keepReason   String?
+  aiScore      Int?
+  metadata     String?  // JSON string for extra info (overview, poster url)
+  dateAdded    DateTime? // Original added date from Sonarr/Radarr
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  markedForDeletionAt DateTime?
+  
+  @@unique([source, sourceId])
+}
+
+model UserAction {
+  id           String   @id @default(uuid())
+  mediaId      String   // Stringified TMDB/TVDB to persist across re-downloads
+  mediaName    String?
+  action       String   // "keep" or "delete"
+  reason       String?
+  createdAt    DateTime @default(now())
+  metadata     String?  // Any context at time of action
+}
+
+model PlexGroup {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  libraries PlexLibrary[]  // Many-to-Many
+  roles     PlexRole[]     // Many-to-Many
+}
+
+model PlexLibrary {
+  id        String         @id // Library section ID from Plex
+  name      String
+  type      String         // e.g. "movie", "show"
+  groups    PlexGroup[]
+}
+
+model PlexRole {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  groups    PlexGroup[]    // Many-to-Many
+  users     PlexUser[]     // One-to-Many
+}
+
+model PlexUser {
+  id             String    @id // Plex User ID
+  username       String
+  warnings       Int       @default(0)
+  banUntil       DateTime?
+  roleId         String?
+  previousRoleId String?
+  role           PlexRole? @relation(fields: [roleId], references: [id])
+  isImmune       Boolean   @default(false)
+  violations     PlexViolation[]
+}
+
+model PlexViolation {
+  id          String   @id @default(uuid())
+  userId      String
+  user        PlexUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip1         String
+  title1      String
+  ip2         String
+  title2      String
+  actionTaken String
+  createdAt   DateTime @default(now())
+}
