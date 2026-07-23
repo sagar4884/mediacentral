@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Lock, User, Loader2, Play } from 'lucide-react'
 import { toast } from 'sonner'
+import { setAuthCookie } from '@/app/actions'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -30,6 +31,7 @@ export default function LoginPage() {
       
       if (data.success) {
         toast.success("Welcome back!")
+        await setAuthCookie(data.token)
         router.push('/')
         router.refresh()
       } else {

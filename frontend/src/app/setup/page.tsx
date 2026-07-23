@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Lock, User, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
+import { setAuthCookie } from '@/app/actions'
 
 export default function SetupPage() {
   const [username, setUsername] = useState('')
@@ -42,6 +43,7 @@ export default function SetupPage() {
       
       if (data.success) {
         toast.success("Setup complete! Welcome.")
+        await setAuthCookie(data.token)
         router.push('/')
         router.refresh()
       } else {

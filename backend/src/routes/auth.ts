@@ -69,7 +69,7 @@ router.post('/setup', async (req, res) => {
     const token = jwt.sign({ username }, newJwtSecret, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, secure: req.secure || req.headers['x-forwarded-proto'] === 'https', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     
-    res.json({ success: true, message: 'Setup complete' });
+    res.json({ success: true, message: 'Setup complete', token });
   } catch (error) {
     res.status(500).json({ error: 'Setup failed' });
   }
@@ -155,7 +155,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ username }, jwtSecret.value, { expiresIn: '7d' });
     res.cookie('token', token, { httpOnly: true, secure: req.secure || req.headers['x-forwarded-proto'] === 'https', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     
-    res.json({ success: true });
+    res.json({ success: true, token });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
