@@ -473,8 +473,8 @@ export default function CurationPage() {
         const success = await handleAction(id, action, 'Bulk manual action', true);
         if (success) successCount++;
         
-        // Only enforce the 1-second delay for true deletion actions to avoid overwhelming Radarr/Sonarr
-        if (action === 'instant_delete') {
+        // Only enforce the 1-second delay for true deletion actions or Sonarr API hits to avoid overwhelming Radarr/Sonarr
+        if (action === 'instant_delete' || action === 'mark_rolling' || action === 'mark_not_rolling') {
           await new Promise(r => setTimeout(r, 1000));
         } else {
           // A tiny 50ms delay for non-destructive/DB-only actions to prevent browser freezing
@@ -1486,6 +1486,18 @@ export default function CurationPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Clear Score
           </Button>
+          {activeSource === 'Sonarr' && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => handleBulkAction('mark_rolling')} disabled={actionLoading} className="border-teal-500/30 text-teal-400 hover:bg-teal-950">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                Rolling
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleBulkAction('mark_not_rolling')} disabled={actionLoading} className="border-slate-500 text-slate-300 hover:bg-slate-800">
+                <X className="h-4 w-4 mr-2" />
+                Not Rolling
+              </Button>
+            </>
+          )}
           <div className="w-px h-6 bg-slate-700 mx-1"></div>
           <Button variant="default" size="sm" onClick={handleAiCurate} disabled={aiLoading} className="bg-amber-600 hover:bg-amber-700 text-white shadow-[0_0_15px_rgba(217,119,6,0.3)] border border-amber-500/30">
             {aiLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
