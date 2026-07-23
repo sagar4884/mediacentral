@@ -1,28 +1,41 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Loader2, Play, Search, Trash2, ShieldAlert, CheckCircle2, XCircle } from "lucide-react"
+import { Loader2, Search, ArrowUpDown, X, LayoutGrid, List, CheckSquare, Sparkles } from "lucide-react"
+import { MediaHoverCard } from "@/components/media-hover-card"
 
-interface RollingShow {
-  id: string;
+interface RollingMediaItem {
+  id: string | number;
   sonarrId: number;
   name: string;
-  status: string;
-  keepEpisodes: number;
-  aiRecommended: boolean;
+  year: number;
+  sizeOnDisk: number;
+  path: string;
+  metadata: string;
+  tags: string;
+  tmdbId?: number | null;
+  tvdbId?: number | null;
+  status: 'active' | 'ignored' | 'pending';
+  keepEpisodes?: number | null;
+  aiRecommended?: boolean;
 }
 
 export default function RollingPage() {
-  const [shows, setShows] = useState<RollingShow[]>([])
+  const [shows, setShows] = useState<RollingMediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [aiLoading, setAiLoading] = useState(false)
   const [syncLoading, setSyncLoading] = useState(false)
+  const [viewMode, setViewMode] = useState<'poster' | 'table'>('table')
+  const [isBulkMode, setIsBulkMode] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
+  const [actionLoading, setActionLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState("active")
 
   const fetchShows = async () => {
     setLoading(true)
@@ -70,7 +83,7 @@ export default function RollingPage() {
     setSyncLoading(false)
   }
 
-  const handleUpdateStatus = async (sonarrId: number, status: string, keepEpisodes: number) => {
+  const handleUpdateStatus = async (sonarrId: number, status: string, keepEpisodes?: number, silent = false): Promise<boolean> => {
     try {
       const res = await fetch('/api/rolling/update', {
         method: 'POST',
@@ -78,22 +91,202 @@ export default function RollingPage() {
         body: JSON.stringify({ sonarrId, status, keepEpisodes })
       })
       if (res.ok) {
-        toast.success("Show updated")
-        fetchShows()
+        if (!silent) {
+          toast.success("Show updated")
+          fetchShows()
+        }
+        return true
       } else {
-        toast.error("Failed to update")
+        if (!silent) toast.error("Failed to update")
+        return false
       }
     } catch (e) {
-      toast.error("Network error")
+      if (!silent) toast.error("Network error")
+      return false
     }
+  }
+
+  const handleBulkAction = async (action: 'active' | 'ignored') => {
+    if (selectedItems.size === 0) return;
+    setActionLoading(true)
+    let successCount = 0;
+    
+    for (const id of Array.from(selectedItems)) {
+      try {
+        const item = shows.find(s => s.sonarrId === id);
+        const success = await handleUpdateStatus(id, action, item?.keepEpisodes || 3, true);
+        if (success) successCount++;
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (e) {}
+    }
+    
+    toast.success(`Successfully marked ${successCount} items`)
+    setSelectedItems(new Set())
+    setIsBulkMode(false)
+    setActionLoading(false)
+    fetchShows()
+  }
+
+  const toggleSelection = (id: number) => {
+    const newSet = new Set(selectedItems)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelectedItems(newSet)
   }
 
   const pendingShows = shows.filter(s => s.status === 'pending')
   const activeShows = shows.filter(s => s.status === 'active')
   const ignoredShows = shows.filter(s => s.status === 'ignored')
 
+  const currentItems = activeTab === 'active' ? activeShows : activeTab === 'suggestions' ? pendingShows : ignoredShows;
+
+  const renderTableView = () => (
+    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm">
+      <table className="w-full text-sm text-left">
+        <thead className="text-xs uppercase bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500">
+          <tr>
+            {isBulkMode && <th className="px-4 py-3 w-12 text-center"></th>}
+            <th className="px-6 py-4 font-semibold">Show Name</th>
+            <th className="px-6 py-4 font-semibold text-center">Keep Episodes</th>
+            <th className="px-6 py-4 font-semibold text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+          {currentItems.length === 0 && (
+            <tr><td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">No shows found.</td></tr>
+          )}
+          {currentItems.map(show => {
+            let metadataObj: any = {}
+            try { metadataObj = JSON.parse(show.metadata || '{}') } catch (e) {}
+            
+            return (
+              <tr key={show.sonarrId} className={`hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${selectedItems.has(show.sonarrId) ? 'bg-amber-500/10 dark:bg-amber-500/10' : ''}`} onClick={() => isBulkMode && toggleSelection(show.sonarrId)}>
+                {isBulkMode && (
+                  <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedItems.has(show.sonarrId)} onChange={() => toggleSelection(show.sonarrId)} className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500" />
+                  </td>
+                )}
+                <td className="px-6 py-4 font-medium flex items-center gap-3">
+                  <MediaHoverCard 
+                    tmdbId={show.tmdbId}
+                    tvdbId={show.tvdbId}
+                    source="Sonarr"
+                    name={show.name}
+                    year={show.year || 0}
+                    metadataStr={show.metadata || "{}"}
+                  >
+                    <span className="cursor-pointer hover:text-amber-500 transition-colors">{show.name}</span>
+                  </MediaHoverCard>
+                  {show.aiRecommended && <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI Suggested</Badge>}
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
+                    <Input 
+                      type="number" 
+                      min={1}
+                      className="w-20 text-center h-8"
+                      defaultValue={show.keepEpisodes || 3}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (val && val !== show.keepEpisodes) {
+                          handleUpdateStatus(show.sonarrId, show.status, val);
+                        }
+                      }}
+                    />
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                    {activeTab !== 'active' && (
+                      <Button size="sm" variant="outline" className="text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-950" onClick={() => handleUpdateStatus(show.sonarrId, 'active', show.keepEpisodes || 3)}>
+                        Rolling
+                      </Button>
+                    )}
+                    {activeTab !== 'ignored' && (
+                      <Button size="sm" variant="outline" className="text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3)}>
+                        Ignore
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderPosterView = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+      {currentItems.length === 0 && <p className="text-muted-foreground col-span-full py-8 text-center">No shows found.</p>}
+      {currentItems.map(show => {
+        let metadataObj: any = {}
+        try { metadataObj = JSON.parse(show.metadata || '{}') } catch (e) {}
+        const isSelected = selectedItems.has(show.sonarrId);
+        
+        return (
+          <MediaHoverCard 
+            key={show.sonarrId}
+            tmdbId={show.tmdbId}
+            tvdbId={show.tvdbId}
+            source="Sonarr"
+            name={show.name}
+            year={show.year || 0}
+            metadataStr={show.metadata || "{}"}
+          >
+            <div 
+              className={`relative group cursor-pointer rounded-xl overflow-hidden shadow-lg transition-all duration-300 transform hover:scale-[1.03] ${isSelected ? 'ring-4 ring-amber-500 shadow-amber-500/50' : 'ring-1 ring-slate-800'}`}
+              onClick={() => isBulkMode ? toggleSelection(show.sonarrId) : null}
+            >
+              <div className="aspect-[2/3] w-full bg-slate-900 relative">
+                {metadataObj.remotePoster ? (
+                  <img src={metadataObj.remotePoster} alt={show.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-700 bg-slate-800">
+                    <span className="text-sm">No Poster</span>
+                  </div>
+                )}
+                
+                {isBulkMode && (
+                  <div className="absolute top-2 left-2 z-20">
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'bg-black/50 border-white/70'}`}>
+                      {isSelected && <CheckSquare className="w-4 h-4 text-white" />}
+                    </div>
+                  </div>
+                )}
+                
+                {!isBulkMode && (
+                  <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 z-10 gap-2">
+                    {activeTab !== 'active' && (
+                      <Button size="sm" variant="default" className="w-full bg-teal-600 hover:bg-teal-700 text-white" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'active', show.keepEpisodes || 3); }}>
+                        Mark Rolling
+                      </Button>
+                    )}
+                    {activeTab !== 'ignored' && (
+                      <Button size="sm" variant="secondary" className="w-full bg-slate-700 hover:bg-slate-600 text-white" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3); }}>
+                        Ignore
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="p-3 bg-slate-900/90 backdrop-blur-md absolute bottom-0 w-full z-0">
+                <h3 className="font-semibold text-sm line-clamp-1 text-slate-200">{show.name}</h3>
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-slate-400">Keep: {show.keepEpisodes || 3} ep</p>
+                  {show.aiRecommended && <Sparkles className="w-3 h-3 text-blue-400" />}
+                </div>
+              </div>
+            </div>
+          </MediaHoverCard>
+        )
+      })}
+    </div>
+  );
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-500 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-emerald-600">
@@ -104,8 +297,24 @@ export default function RollingPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleScanAi} disabled={aiLoading || syncLoading} className="rounded-xl border-teal-500/30 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950">
-            {aiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+          <Button 
+            variant={isBulkMode ? "default" : "outline"}
+            className={`rounded-xl transition-all ${isBulkMode ? "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20" : "border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+            onClick={() => { setIsBulkMode(!isBulkMode); setSelectedItems(new Set()); }}
+          >
+            <CheckSquare className="h-4 w-4 mr-2" />
+            Bulk
+          </Button>
+          <div className="flex bg-slate-200/50 dark:bg-slate-900/50 p-1 rounded-xl shadow-inner border border-slate-300 dark:border-slate-800">
+            <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" className={`rounded-lg ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 shadow-sm' : ''}`} onClick={() => setViewMode('table')}>
+              <List className="h-4 w-4" />
+            </Button>
+            <Button variant={viewMode === 'poster' ? 'secondary' : 'ghost'} size="icon" className={`rounded-lg ${viewMode === 'poster' ? 'bg-white dark:bg-slate-800 shadow-sm' : ''}`} onClick={() => setViewMode('poster')}>
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button variant="outline" onClick={handleScanAi} disabled={aiLoading || syncLoading} className="rounded-xl border-amber-500/30 text-amber-500 hover:bg-amber-950">
+            {aiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
             Scan with AI
           </Button>
           <Button onClick={handleSync} disabled={syncLoading || aiLoading} className="rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-md">
@@ -115,137 +324,54 @@ export default function RollingPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs defaultValue="active" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl">
           <TabsTrigger value="active" className="rounded-lg">Active ({activeShows.length})</TabsTrigger>
           <TabsTrigger value="suggestions" className="rounded-lg">Suggestions ({pendingShows.length})</TabsTrigger>
           <TabsTrigger value="ignored" className="rounded-lg">Ignored ({ignoredShows.length})</TabsTrigger>
         </TabsList>
         
-        {/* Active Tab */}
-        <TabsContent value="active" className="mt-6">
-          <Card className="glass-panel border-t-4 border-t-teal-500 shadow-lg">
+        <TabsContent value={activeTab} className="mt-6">
+          <Card className={`glass-panel border-t-4 shadow-lg ${activeTab === 'active' ? 'border-t-teal-500' : activeTab === 'suggestions' ? 'border-t-amber-500' : 'border-t-slate-500'}`}>
             <CardHeader>
-              <CardTitle>Active Rolling Shows</CardTitle>
-              <CardDescription>These shows will have old seasons deleted automatically when new episodes download.</CardDescription>
+              <CardTitle>{activeTab === 'active' ? 'Active Rolling Shows' : activeTab === 'suggestions' ? 'AI Suggestions' : 'Ignored Shows'}</CardTitle>
+              <CardDescription>
+                {activeTab === 'active' ? 'These shows will have old seasons deleted automatically when new episodes download.' :
+                 activeTab === 'suggestions' ? 'Shows the AI thinks you don\'t need to keep forever.' :
+                 'These shows will be ignored by the AI in the future.'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-teal-500" /></div> : (
-                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500">
-                      <tr>
-                        <th className="px-6 py-4 font-semibold">Show Name</th>
-                        <th className="px-6 py-4 font-semibold text-center">Keep Episodes</th>
-                        <th className="px-6 py-4 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {activeShows.length === 0 && (
-                        <tr><td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">No active shows found.</td></tr>
-                      )}
-                      {activeShows.map(show => (
-                        <tr key={show.sonarrId} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                          <td className="px-6 py-4 font-medium flex items-center gap-2">
-                            {show.name}
-                            {show.aiRecommended && <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">AI Suggested</Badge>}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <Input 
-                                type="number" 
-                                min={1}
-                                className="w-20 text-center h-8"
-                                defaultValue={show.keepEpisodes}
-                                onBlur={(e) => {
-                                  const val = parseInt(e.target.value);
-                                  if (val && val !== show.keepEpisodes) {
-                                    handleUpdateStatus(show.sonarrId, show.status, val);
-                                  }
-                                }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <Button size="sm" variant="outline" className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950" onClick={() => handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3)}>
-                              Ignore
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                viewMode === 'table' ? renderTableView() : renderPosterView()
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Suggestions Tab */}
-        <TabsContent value="suggestions" className="mt-6">
-          <Card className="glass-panel border-t-4 border-t-blue-500 shadow-lg">
-            <CardHeader>
-              <CardTitle>AI Suggestions</CardTitle>
-              <CardDescription>Shows the AI thinks you don't need to keep forever.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div> : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pendingShows.length === 0 && <p className="text-muted-foreground col-span-full">No pending suggestions. Try running an AI Scan.</p>}
-                  {pendingShows.map(show => (
-                    <Card key={show.sonarrId} className="bg-slate-50 dark:bg-slate-900 border-none shadow-sm flex flex-col justify-between">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">{show.name}</CardTitle>
-                      </CardHeader>
-                      <CardContent className="pb-4 pt-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Threshold</span>
-                          <Input 
-                            type="number" 
-                            className="w-20 h-7 text-xs" 
-                            defaultValue={show.keepEpisodes || 3}
-                            onBlur={(e) => {
-                               const val = parseInt(e.target.value);
-                               if (val) handleUpdateStatus(show.sonarrId, show.status, val);
-                            }}
-                          />
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between border-t border-slate-200 dark:border-slate-800 pt-3 gap-2">
-                        <Button size="sm" variant="ghost" className="text-rose-500 w-full hover:bg-rose-100 dark:hover:bg-rose-900/30" onClick={() => handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3)}>
-                          <XCircle className="w-4 h-4 mr-1" /> Ignore
-                        </Button>
-                        <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white w-full" onClick={() => handleUpdateStatus(show.sonarrId, 'active', show.keepEpisodes || 3)}>
-                          <CheckCircle2 className="w-4 h-4 mr-1" /> Mark as Rolling
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Ignored Tab */}
-        <TabsContent value="ignored" className="mt-6">
-          <Card className="glass-panel border-t-4 border-t-slate-500 shadow-lg">
-            <CardHeader>
-              <CardTitle>Ignored Shows</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {ignoredShows.length === 0 && <p className="text-muted-foreground text-sm">No ignored shows.</p>}
-                {ignoredShows.map(show => (
-                  <Badge key={show.sonarrId} variant="secondary" className="px-3 py-1 text-sm flex items-center gap-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" title="Remove the not-rolling-keep tag in Sonarr to restore this show.">
-                    {show.name} <span className="text-xs opacity-50">(Remove tag in Sonarr)</span>
-                  </Badge>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Sticky Bulk Action Bar */}
+      {isBulkMode && selectedItems.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 p-3 px-6 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 flex items-center gap-4 animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <span className="font-medium text-slate-200 bg-slate-800 px-3 py-1 rounded-full text-sm whitespace-nowrap">
+            {selectedItems.size} Selected
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleBulkAction('active')} disabled={actionLoading} className="border-teal-500/30 text-teal-400 hover:bg-teal-950">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Rolling
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleBulkAction('ignored')} disabled={actionLoading} className="border-slate-500 text-slate-300 hover:bg-slate-800">
+              <X className="h-4 w-4 mr-2" />
+              Not Rolling
+            </Button>
+            <div className="w-px h-6 bg-slate-700 mx-1"></div>
+            <Button variant="ghost" size="sm" onClick={() => setIsBulkMode(false)} className="text-slate-400 hover:text-white ml-2">
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

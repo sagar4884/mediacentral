@@ -30,9 +30,9 @@ router.get('/', async (req, res) => {
       }
 
       return {
-        id: override?.id || -1,
+        ...show,
+        rollingId: override?.id || -1,
         sonarrId: Number(show.sourceId),
-        name: show.name,
         status,
         keepEpisodes: override?.keepEpisodes || null,
         aiRecommended: override?.aiRecommended || false
