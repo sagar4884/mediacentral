@@ -13,7 +13,7 @@ import { toast } from "sonner"
 interface PlexLibrary { id: string; name: string; type: string; }
 interface PlexGroup { id: string; name: string; libraries: PlexLibrary[]; }
 interface PlexRole { id: string; name: string; groups: PlexGroup[]; }
-interface PlexUser { id: string; username: string; warnings: number; banUntil: string | null; roleId: string | null; role?: PlexRole; isImmune: boolean; }
+interface PlexUser { id: string; username: string; warnings: number; banUntil: string | null; roleId: string | null; previousRoleId: string | null; role?: PlexRole; isImmune: boolean; }
 interface PlexViolation { id: string; userId: string; ip1: string; title1: string; ip2: string; title2: string; actionTaken: string; createdAt: string; user: PlexUser; }
 
 export default function PlexPage() {
