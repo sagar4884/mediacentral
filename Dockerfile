@@ -24,6 +24,12 @@ WORKDIR /app
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
+# Define environment variables early so build steps can use them
+ENV NODE_ENV=production
+ENV PORT=4000
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="file:/config/dev.db"
+
 # Generate Prisma client for backend
 WORKDIR /app/backend
 RUN npx prisma generate
@@ -34,12 +40,6 @@ RUN npm run build
 
 # Setup entrypoint directory
 WORKDIR /app
-
-# Define environment variables
-ENV NODE_ENV=production
-ENV PORT=4000
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL="file:/config/dev.db"
 
 # Expose ports (Next.js default is 3000, Express is 4000)
 EXPOSE 3000 4000
