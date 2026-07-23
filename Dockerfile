@@ -26,7 +26,6 @@ COPY frontend/ ./frontend/
 
 # Define environment variables early so build steps can use them
 ENV NODE_ENV=production
-ENV PORT=4000
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="file:/config/dev.db"
 
