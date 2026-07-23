@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <Container version="2">
   <Name>MediaCentral</Name>
   <Repository>ghcr.io/sagar4884/mediacentral:latest</Repository>
@@ -11,5 +11,5 @@
   <WebUI>http://[IP]:[PORT:3000]</WebUI>
   <Icon>https://raw.githubusercontent.com/sagar4884/mediacentral/main/frontend/public/favicon.ico</Icon>
   <Config Name="WebUI Port" Target="3000" Default="3000" Mode="tcp" Description="Port to access the MediaCentral WebUI" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
-  <Config Name="Appdata Directory" Target="/app/backend/prisma" Default="/mnt/user/appdata/mediacentral/prisma" Mode="rw" Description="Path to store MediaCentral database" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mediacentral/prisma</Config>
+  <Config Name="Appdata Directory" Target="/config" Default="/mnt/user/appdata/mediacentral" Mode="rw" Description="Path to store MediaCentral database" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/mediacentral</Config>
 </Container>

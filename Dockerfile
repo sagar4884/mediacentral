@@ -39,6 +39,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=4000
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="file:/config/dev.db"
 
 # Expose ports (Next.js default is 3000, Express is 4000)
 EXPOSE 3000 4000
