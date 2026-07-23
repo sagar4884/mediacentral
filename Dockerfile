@@ -11,11 +11,11 @@ COPY frontend/package*.json ./frontend/
 
 # Install backend dependencies
 WORKDIR /app/backend
-RUN npm ci --legacy-peer-deps
+RUN npm install
 
 # Install frontend dependencies
 WORKDIR /app/frontend
-RUN npm ci --legacy-peer-deps
+RUN npm install
 
 # Copy full source
 WORKDIR /app
