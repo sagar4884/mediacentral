@@ -368,7 +368,7 @@ export class ActionService {
     if (!url || !key || !geminiKey) throw new Error("Missing Sonarr or Gemini credentials");
 
     const ai = new GoogleGenAI({ apiKey: geminiKey });
-    const model = await this.getSetting('GeminiScoreModel', 'gemini-1.5-flash');
+    const model = (await this.getSetting('GeminiScoreModel')) || 'gemini-1.5-flash';
 
     // Fetch all series from Sonarr
     const seriesRes = await axios.get(`${url}/api/v3/series`, {
