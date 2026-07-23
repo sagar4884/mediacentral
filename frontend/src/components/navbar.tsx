@@ -13,6 +13,13 @@ import { Circle, Loader2 } from "lucide-react"
 
 type ServiceStatus = 'green' | 'yellow' | 'red' | 'loading'
 
+const StatusLight = ({ state }: { state: ServiceStatus }) => {
+  if (state === 'green') return <Circle className="h-3 w-3 fill-green-500 text-green-500" />
+  if (state === 'yellow') return <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+  if (state === 'red') return <Circle className="h-3 w-3 fill-red-500 text-red-500" />
+  return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+}
+
 export function Navbar() {
   const pathname = usePathname()
   const { setTheme, theme } = useTheme()
@@ -97,12 +104,7 @@ export function Navbar() {
     { name: "Settings", href: "/settings", icon: Settings },
   ]
 
-  const StatusLight = ({ state }: { state: ServiceStatus }) => {
-    if (state === 'green') return <Circle className="h-3 w-3 fill-green-500 text-green-500" />
-    if (state === 'yellow') return <Circle className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-    if (state === 'red') return <Circle className="h-3 w-3 fill-red-500 text-red-500" />
-    return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-  }
+
 
   return (
     <div className="pt-4 px-4 sticky top-0 z-50">

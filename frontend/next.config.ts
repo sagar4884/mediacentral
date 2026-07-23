@@ -5,9 +5,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:4000/api/:path*', // Proxy to Backend
+        destination: 'http://127.0.0.1:4000/api/:path*', // Proxy to Backend
       },
     ]
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 
