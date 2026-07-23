@@ -44,4 +44,4 @@ ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000 4000
 
 # Start both services using concurrently
-CMD ["concurrently", "\"cd backend && npx tsx src/index.ts\"", "\"cd frontend && npm run start\""]
+CMD ["concurrently", "\"cd backend && npx prisma db push --accept-data-loss && npx tsx src/index.ts\"", "\"cd frontend && npm run start\""]
