@@ -84,6 +84,9 @@ export default function RollingPage() {
   }
 
   const handleUpdateStatus = async (sonarrId: number, status: string, keepEpisodes?: number, silent = false): Promise<boolean> => {
+    // Optimistic UI Update
+    setShows(prev => prev.map(s => s.sonarrId === sonarrId ? { ...s, status: status as any, keepEpisodes: keepEpisodes || s.keepEpisodes } : s));
+    
     try {
       const res = await fetch('/api/rolling/update', {
         method: 'POST',
@@ -91,17 +94,16 @@ export default function RollingPage() {
         body: JSON.stringify({ sonarrId, status, keepEpisodes })
       })
       if (res.ok) {
-        if (!silent) {
-          toast.success("Show updated")
-          fetchShows()
-        }
+        if (!silent) toast.success("Show updated")
         return true
       } else {
         if (!silent) toast.error("Failed to update")
+        fetchShows() // revert on fail
         return false
       }
     } catch (e) {
       if (!silent) toast.error("Network error")
+      fetchShows() // revert on fail
       return false
     }
   }
