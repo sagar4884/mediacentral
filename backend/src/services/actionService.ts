@@ -4,6 +4,7 @@ import { prisma } from '../index';
 import { tautulliMonitor } from './tautulliMonitor';
 import PushBox from 'pushover-notifications';
 import { GoogleGenAI } from '@google/genai';
+import { syncService } from './syncService';
 
 export class ActionService {
   constructor() {}
@@ -197,33 +198,40 @@ export class ActionService {
     }
   }
 
-  // Rolling Logic for Reality TV
   async processRollingLogic() {
     console.log('Running Rolling TV Show logic...');
     const autoDelete = await this.getSetting('EnableAutoRollingDelete');
+    const globalKeep = Number(await this.getSetting('GlobalRollingKeepEpisodes')) || 3;
     
-    // Find Sonarr items with 'active' status in RollingShow
-    const shows = await prisma.rollingShow.findMany({
-      where: { status: 'active' }
+    // Find Sonarr items with 'ai-rolling-keep' tag in MediaCache
+    const mediaItems = await prisma.mediaCache.findMany({
+      where: { 
+        source: 'Sonarr',
+        tags: { contains: 'ai-rolling-keep' }
+      }
     });
 
     const pendingDeletions = [];
 
-    for (const show of shows) {
+    for (const item of mediaItems) {
+      const sonarrId = Number(item.sourceId);
+      const showOverride = await prisma.rollingShow.findUnique({ where: { sonarrId } });
+      const keepEpisodes = showOverride?.keepEpisodes ?? globalKeep;
+
       // 1. Fetch series data to get seasons and episodes
       const url = await this.getSetting('SonarrURL');
       const key = await this.getSetting('SonarrKey');
       if (!url || !key) continue;
 
       try {
-        const response = await axios.get(`${url}/api/v3/series/${show.sonarrId}`, {
+        const response = await axios.get(`${url}/api/v3/series/${item.sourceId}`, {
           headers: { 'X-Api-Key': key }
         });
         
         const seasons = response.data.seasons || [];
         const episodesResponse = await axios.get(`${url}/api/v3/episode`, {
           headers: { 'X-Api-Key': key },
-          params: { seriesId: show.sonarrId }
+          params: { seriesId: item.sourceId }
         });
         const episodes = episodesResponse.data || [];
 
@@ -232,16 +240,16 @@ export class ActionService {
         const currentSeasonEpisodes = episodes.filter((e: any) => e.seasonNumber === currentSeasonNum && e.hasFile);
 
         // If current season has >= keepEpisodes downloaded episodes, flag previous season
-        if (currentSeasonEpisodes.length >= show.keepEpisodes) {
+        if (currentSeasonEpisodes.length >= keepEpisodes) {
           const previousSeasonNum = currentSeasonNum - 1;
           const previousSeason = seasons.find((s: any) => s.seasonNumber === previousSeasonNum);
           
           if (previousSeason && previousSeason.statistics?.sizeOnDisk > 0) {
-             pendingDeletions.push({ show, previousSeasonNum });
+             pendingDeletions.push({ item, previousSeasonNum });
           }
         }
       } catch (error: any) {
-        console.error(`Failed rolling logic for ${show.name}: ${error.message}`);
+        console.error(`Failed rolling logic for ${item.name}: ${error.message}`);
       }
     }
 
@@ -249,64 +257,21 @@ export class ActionService {
 
     if (autoDelete === 'true') {
       const dryRun = await this.isDryRun();
-      for (const { show, previousSeasonNum } of pendingDeletions) {
+      for (const { item, previousSeasonNum } of pendingDeletions) {
         if (dryRun) {
-          console.log(`DRY RUN ROLLING: Would delete and unmonitor Season ${previousSeasonNum} of ${show.name}`);
+          console.log(`DRY RUN ROLLING: Would delete and unmonitor Season ${previousSeasonNum} of ${item.name}`);
         } else {
-          await this.executeManualRolling([{ sonarrId: show.sonarrId, seasonNumber: previousSeasonNum }]);
+          await this.executeManualRolling([{ sonarrId: Number(item.sourceId), seasonNumber: previousSeasonNum }]);
         }
       }
     } else {
        // Send notification that there are pending deletions
-       const showNames = pendingDeletions.map(p => p.show.name).join(', ');
+       const showNames = pendingDeletions.map(p => p.item.name).join(', ');
        this.sendNotification(`Rolling TV Shows are ready to be deleted: ${showNames}. Please visit the Dashboard to execute.`, 'auto_delete');
     }
   }
 
-  async runRollingDryRun() {
-    const shows = await prisma.rollingShow.findMany({
-      where: { status: 'active' }
-    });
 
-    const pendingDeletions = [];
-    const url = await this.getSetting('SonarrURL');
-    const key = await this.getSetting('SonarrKey');
-    if (!url || !key) throw new Error("Sonarr credentials not set");
-
-    for (const show of shows) {
-      try {
-        const response = await axios.get(`${url}/api/v3/series/${show.sonarrId}`, {
-          headers: { 'X-Api-Key': key }
-        });
-        const seasons = response.data.seasons || [];
-        const episodesResponse = await axios.get(`${url}/api/v3/episode`, {
-          headers: { 'X-Api-Key': key },
-          params: { seriesId: show.sonarrId }
-        });
-        const episodes = episodesResponse.data || [];
-
-        const currentSeasonNum = Math.max(...seasons.map((s: any) => s.seasonNumber));
-        const currentSeasonEpisodes = episodes.filter((e: any) => e.seasonNumber === currentSeasonNum && e.hasFile);
-
-        if (currentSeasonEpisodes.length >= show.keepEpisodes) {
-          const previousSeasonNum = currentSeasonNum - 1;
-          const previousSeason = seasons.find((s: any) => s.seasonNumber === previousSeasonNum);
-          
-          if (previousSeason && previousSeason.statistics?.sizeOnDisk > 0) {
-             pendingDeletions.push({ 
-               sonarrId: show.sonarrId, 
-               name: show.name, 
-               seasonNumber: previousSeasonNum, 
-               sizeOnDisk: previousSeason.statistics.sizeOnDisk 
-             });
-          }
-        }
-      } catch (error: any) {
-        console.error(`Failed dry-run logic for ${show.name}: ${error.message}`);
-      }
-    }
-    return pendingDeletions;
-  }
 
   async executeManualRolling(selections: { sonarrId: number, seasonNumber: number }[]) {
     const url = await this.getSetting('SonarrURL');
@@ -370,17 +335,28 @@ export class ActionService {
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const model = (await this.getSetting('GeminiScoreModel')) || 'gemini-1.5-flash';
 
-    // Fetch all series from Sonarr
-    const seriesRes = await axios.get(`${url}/api/v3/series`, {
-      headers: { 'X-Api-Key': key }
-    });
-    const seriesList = seriesRes.data || [];
+    // First sync Sonarr
+    await syncService.syncSonarr();
 
-    // Filter out shows already in RollingShow (except those that are aiRecommended but not actively decided on)
+    // Fetch all Sonarr series from local cache
+    const sonarrShows = await prisma.mediaCache.findMany({
+      where: { source: 'Sonarr' }
+    });
+
+    // Filter out shows that are already pending or active in RollingShow table
     const existingRolling = await prisma.rollingShow.findMany();
     const existingIds = new Set(existingRolling.map(r => r.sonarrId));
     
-    const candidates = seriesList.filter((s: any) => !existingIds.has(s.id));
+    const candidates = sonarrShows.filter((s: any) => {
+      const tags = JSON.parse(s.tags || '[]');
+      const hasKeep = tags.includes('ai-rolling-keep');
+      const hasNotKeep = tags.includes('not-rolling-keep');
+      
+      // Skip if it has either tag, or if it's already pending in RollingShow
+      if (hasKeep || hasNotKeep || existingIds.has(Number(s.sourceId))) return false;
+      return true;
+    });
+
     if (candidates.length === 0) return;
 
     // Send to Gemini in batches
@@ -392,7 +368,7 @@ export class ActionService {
 Respond strictly with a JSON object mapping the show's ID to a boolean (true if it should be rolling, false otherwise).
 Example: {"12": true, "45": false}
 Shows:
-${JSON.stringify(batch.map((s: any) => ({ id: s.id, title: s.title, genres: s.genres })))}\n\nOutput only valid JSON.`;
+${JSON.stringify(batch.map((s: any) => ({ id: s.sourceId, title: s.name })))}\n\nOutput only valid JSON.`;
 
       try {
         const response = await ai.models.generateContent({
@@ -407,11 +383,11 @@ ${JSON.stringify(batch.map((s: any) => ({ id: s.id, title: s.title, genres: s.ge
         const decisions = JSON.parse(text);
 
         for (const show of batch) {
-          if (decisions[show.id] === true) {
+          if (decisions[show.sourceId] === true) {
             await prisma.rollingShow.create({
               data: {
-                sonarrId: show.id,
-                name: show.title,
+                sonarrId: Number(show.sourceId),
+                name: show.name,
                 status: 'pending', // Pending user confirmation
                 aiRecommended: true
               }
@@ -421,6 +397,34 @@ ${JSON.stringify(batch.map((s: any) => ({ id: s.id, title: s.title, genres: s.ge
       } catch (e) {
         console.error("AI Rolling Scan Batch Failed", e);
       }
+    }
+  }
+
+  async updateSonarrTag(sonarrId: number, tagLabel: string) {
+    const url = await this.getSetting('SonarrURL');
+    const key = await this.getSetting('SonarrKey');
+    if (!url || !key) return;
+
+    try {
+      // 1. Get or create tag
+      const tagsRes = await axios.get(`${url}/api/v3/tag`, { headers: { 'X-Api-Key': key } });
+      let tag = tagsRes.data.find((t: any) => t.label === tagLabel);
+      
+      if (!tag) {
+        const createRes = await axios.post(`${url}/api/v3/tag`, { label: tagLabel }, { headers: { 'X-Api-Key': key } });
+        tag = createRes.data;
+      }
+
+      // 2. Add tag to series
+      const seriesRes = await axios.get(`${url}/api/v3/series/${sonarrId}`, { headers: { 'X-Api-Key': key } });
+      const series = seriesRes.data;
+      
+      if (!series.tags.includes(tag.id)) {
+        series.tags.push(tag.id);
+        await axios.put(`${url}/api/v3/series/${sonarrId}`, series, { headers: { 'X-Api-Key': key } });
+      }
+    } catch (error: any) {
+      console.error(`Failed to update Sonarr tag ${tagLabel} for series ${sonarrId}: ${error.message}`);
     }
   }
 }

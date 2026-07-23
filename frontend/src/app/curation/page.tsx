@@ -22,6 +22,7 @@ interface MediaItem {
   keepStatus: string;
   keepReason?: string | null;
   source: string;
+  sourceId: string;
   metadata: string;
   dateAdded: string | null;
   tags: string;
@@ -52,7 +53,7 @@ interface RuleChange {
   decision?: 'accepted' | 'rejected';
 }
 
-type ActionType = 'keep' | 'delete' | 'wait' | 'archive' | 'clear_score' | 'instant_delete'
+type ActionType = 'keep' | 'delete' | 'wait' | 'archive' | 'clear_score' | 'instant_delete' | 'mark_rolling' | 'mark_not_rolling'
 
 function ResizableHeader({ 
   label, 
@@ -421,23 +422,38 @@ export default function CurationPage() {
         } else {
           if (!silent) toast.error("Failed to delete item from source");
         }
+      } else if (action === 'mark_rolling' || action === 'mark_not_rolling') {
+        const item = paginatedItems.find(i => i.id === id);
+        if (!item || !item.sourceId) throw new Error("Item sourceId not found");
+        
+        const status = action === 'mark_rolling' ? 'active' : 'ignored';
+        const res = await fetch('/api/rolling/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sonarrId: Number(item.sourceId), status })
+        });
+        
+        if (res.ok) {
+          if (!silent) toast.success(`Marked as ${action === 'mark_rolling' ? 'Rolling' : 'Not Rolling'}`);
+          return true;
+        }
       } else {
         const res = await fetch(`/api/media/${id}/action`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action, reason })
         })
+
         const data = await res.json()
         if (data.success) {
           if (action === 'clear_score') {
             setItems(prev => prev.map(i => i.id === id ? { ...i, aiScore: null } : i))
+            if (!silent) toast.success(`Cleared AI Score`)
           } else {
             setItems(prev => prev.filter(i => i.id !== id))
+            if (!silent) toast.success(`Action applied successfully`)
           }
-          if (!silent) {
-            toast.success(`Action applied successfully`)
-          }
-          success = true;
+          return true
         }
       }
     } catch (e) {
@@ -1292,6 +1308,21 @@ export default function CurationPage() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
+                            {activeSource === 'Sonarr' && (
+                              <Popover>
+                                <PopoverTrigger className={`inline-flex items-center justify-center rounded-md text-sm font-medium h-8 w-8 hover:text-teal-500 hover:bg-teal-500/10 ${actionLoading ? 'opacity-50 pointer-events-none' : ''}`} title="Rolling Options">
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-1 glass-panel">
+                                  <Button variant="ghost" size="sm" className="w-full justify-start text-teal-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950" onClick={(e) => { e.stopPropagation(); handleAction(item.id, 'mark_rolling') }}>
+                                    <ArrowUpDown className="h-4 w-4 mr-2" /> Mark as Rolling
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="w-full justify-start text-slate-500 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={(e) => { e.stopPropagation(); handleAction(item.id, 'mark_not_rolling') }}>
+                                    <X className="h-4 w-4 mr-2" /> Mark as Not Rolling
+                                  </Button>
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1369,6 +1400,16 @@ export default function CurationPage() {
                             <Button size="sm" variant="destructive" className="w-[80%] bg-red-700 hover:bg-red-600" onClick={(e) => { e.stopPropagation(); handleAction(item.id, 'instant_delete') }} disabled={actionLoading}>
                               <Trash2 className="h-4 w-4 mr-2" /> Delete Now
                             </Button>
+                          )}
+                          {activeSource === 'Sonarr' && (
+                            <div className="flex w-[80%] gap-1">
+                              <Button size="sm" variant="secondary" className="w-1/2 bg-teal-600 hover:bg-teal-700 text-white border-0" onClick={(e) => { e.stopPropagation(); handleAction(item.id, 'mark_rolling') }} disabled={actionLoading} title="Mark as Rolling">
+                                <ArrowUpDown className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="secondary" className="w-1/2 bg-slate-600 hover:bg-slate-700 text-white border-0" onClick={(e) => { e.stopPropagation(); handleAction(item.id, 'mark_not_rolling') }} disabled={actionLoading} title="Mark Not Rolling">
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                         </div>
                       )}

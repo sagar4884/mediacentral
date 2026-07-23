@@ -50,7 +50,7 @@ export default function SettingsPage() {
     PushoverUserKey: '', PushoverAppToken: '',
     PushoverNotifyAutoDelete: 'true', PushoverNotifyManualDelete: 'false', PushoverNotifyPlexBan: 'true', PushoverNotifyAccountSharing: 'true', PushoverNotifySyncCompletion: 'false',
     StorageProvider: 'Unraid', AutoKeepWatchedMedia: 'true', AutoKeepRequestedMedia: 'true', DeletionGracePeriod: '30',
-    EnableAutoRollingAI: 'false', EnableAutoRollingDelete: 'false',
+    EnableAutoRollingAI: 'false', EnableAutoRollingDelete: 'false', GlobalRollingKeepEpisodes: '3',
     EnableConcurrentIPProtection: 'false', StreamTerminationMessage: 'You are not allowed to share your account.', TautulliShowWatchThreshold: 'any',
     BanRoleName: 'Temporarily Banned', RevokedRoleName: 'Revoked', AICurationGuidelines: ''
   })
@@ -459,6 +459,11 @@ export default function SettingsPage() {
                     <option value="true">Enabled (Auto-delete & unmonitor)</option>
                     <option value="false">Disabled (Send Pushover alert only)</option>
                   </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Global Rolling Keep Episodes</Label>
+                  <Input type="number" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-10 focus-visible:ring-purple-500/50" value={settings.GlobalRollingKeepEpisodes} onChange={e => handleChange('GlobalRollingKeepEpisodes', e.target.value)} />
+                  <p className="text-xs text-muted-foreground mt-1">Default number of episodes a rolling show must have downloaded in the newest season before deleting the old season.</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Deletion Grace Period (Days)</Label>
