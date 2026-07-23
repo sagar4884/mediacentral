@@ -435,7 +435,7 @@ export default function CurationPage() {
         
         if (res.ok) {
           if (!silent) toast.success(`Marked as ${action === 'mark_rolling' ? 'Rolling' : 'Not Rolling'}`);
-          return true;
+          success = true;
         }
       } else {
         const res = await fetch(`/api/media/${id}/action`, {
@@ -453,13 +453,15 @@ export default function CurationPage() {
             setItems(prev => prev.filter(i => i.id !== id))
             if (!silent) toast.success(`Action applied successfully`)
           }
-          return true
+          success = true;
         }
       }
     } catch (e) {
       if (!silent) toast.error("Error applying action")
+    } finally {
+      if (!silent) setActionLoading(false)
     }
-    if (!silent) setActionLoading(false)
+    
     return success;
   }
 
