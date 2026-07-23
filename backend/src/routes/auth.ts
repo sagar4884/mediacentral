@@ -67,7 +67,7 @@ router.post('/setup', async (req, res) => {
     await prisma.setting.upsert({ where: { key: 'JwtSecret' }, update: { value: newJwtSecret }, create: { key: 'JwtSecret', value: newJwtSecret } });
 
     const token = jwt.sign({ username }, newJwtSecret, { expiresIn: '7d' });
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+    res.cookie('token', token, { httpOnly: true, secure: req.secure || req.headers['x-forwarded-proto'] === 'https', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     
     res.json({ success: true, message: 'Setup complete' });
   } catch (error) {
@@ -153,7 +153,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign({ username }, jwtSecret.value, { expiresIn: '7d' });
-    res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
+    res.cookie('token', token, { httpOnly: true, secure: req.secure || req.headers['x-forwarded-proto'] === 'https', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
     
     res.json({ success: true });
   } catch (error) {
