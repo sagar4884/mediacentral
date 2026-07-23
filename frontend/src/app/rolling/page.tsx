@@ -219,69 +219,70 @@ export default function RollingPage() {
     </div>
   );
 
+  const getImageUrl = (metadataStr: string, source: string) => {
+    try {
+      const meta = JSON.parse(metadataStr);
+      if (meta.posterUrl) {
+        if (meta.posterUrl.startsWith('http')) return meta.posterUrl;
+        const safeUrl = meta.posterUrl.startsWith('/') ? meta.posterUrl : `/${meta.posterUrl}`;
+        return `/api/media/image?url=${encodeURIComponent(safeUrl)}&source=${source}`;
+      }
+    } catch (e) {}
+    return null;
+  }
+
   const renderPosterView = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
       {currentItems.length === 0 && <p className="text-muted-foreground col-span-full py-8 text-center">No shows found.</p>}
       {currentItems.map(show => {
-        let metadataObj: any = {}
-        try { metadataObj = JSON.parse(show.metadata || '{}') } catch (e) {}
         const isSelected = selectedItems.has(show.sonarrId);
+        const imgUrl = getImageUrl(show.metadata, 'Sonarr');
         
         return (
-          <MediaHoverCard 
+          <Card 
             key={show.sonarrId}
-            tmdbId={show.tmdbId}
-            tvdbId={show.tvdbId}
-            source="Sonarr"
-            name={show.name}
-            year={show.year || 0}
-            metadataStr={show.metadata || "{}"}
+            className={`overflow-hidden glass relative group cursor-pointer transition-all duration-200 border-2 ${isSelected ? 'border-amber-500 scale-[0.98]' : 'border-transparent hover:border-slate-600'}`}
+            onClick={() => isBulkMode ? toggleSelection(show.sonarrId) : null}
           >
-            <div 
-              className={`relative group cursor-pointer rounded-xl overflow-hidden shadow-lg transition-all duration-300 transform hover:scale-[1.03] ${isSelected ? 'ring-4 ring-amber-500 shadow-amber-500/50' : 'ring-1 ring-slate-800'}`}
-              onClick={() => isBulkMode ? toggleSelection(show.sonarrId) : null}
-            >
-              <div className="aspect-[2/3] w-full bg-slate-900 relative">
-                {metadataObj.remotePoster ? (
-                  <img src={metadataObj.remotePoster} alt={show.name} className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-700 bg-slate-800">
-                    <span className="text-sm">No Poster</span>
-                  </div>
-                )}
-                
-                {isBulkMode && (
-                  <div className="absolute top-2 left-2 z-20">
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'bg-black/50 border-white/70'}`}>
-                      {isSelected && <CheckSquare className="w-4 h-4 text-white" />}
-                    </div>
-                  </div>
-                )}
-                
-                {!isBulkMode && (
-                  <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 z-10 gap-2">
-                    {activeTab !== 'active' && (
-                      <Button size="sm" variant="default" className="w-full bg-teal-600 hover:bg-teal-700 text-white" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'active', show.keepEpisodes || 3); }}>
-                        Mark Rolling
-                      </Button>
-                    )}
-                    {activeTab !== 'ignored' && (
-                      <Button size="sm" variant="secondary" className="w-full bg-slate-700 hover:bg-slate-600 text-white" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3); }}>
-                        Ignore
-                      </Button>
-                    )}
-                  </div>
-                )}
+            {isBulkMode && (
+              <div className="absolute top-2 left-2 z-20 bg-black/50 p-1 rounded backdrop-blur-sm">
+                {isSelected ? <CheckSquare className="h-5 w-5 text-amber-500" /> : <div className="h-5 w-5 border-2 border-white/70 rounded-sm"></div>}
               </div>
-              <div className="p-3 bg-slate-900/90 backdrop-blur-md absolute bottom-0 w-full z-0">
-                <h3 className="font-semibold text-sm line-clamp-1 text-slate-200">{show.name}</h3>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-xs text-slate-400">Keep: {show.keepEpisodes || 3} ep</p>
-                  {show.aiRecommended && <Sparkles className="w-3 h-3 text-blue-400" />}
+            )}
+            
+            <div className="aspect-[2/3] w-full bg-slate-900 relative">
+              {imgUrl ? (
+                <img src={imgUrl} alt={show.name} className="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-700 bg-slate-800">
+                  <span className="text-xs uppercase font-medium text-center px-2">No Poster</span>
                 </div>
-              </div>
+              )}
+              
+              {!isBulkMode && (
+                <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center p-3 z-10 gap-3 backdrop-blur-sm">
+                  {activeTab !== 'active' && (
+                    <Button size="sm" className="w-[80%] bg-teal-600 hover:bg-teal-700 text-white border-0" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'active', show.keepEpisodes || 3); }}>
+                      <ArrowUpDown className="h-4 w-4 mr-2" /> Mark Rolling
+                    </Button>
+                  )}
+                  {activeTab !== 'ignored' && (
+                    <Button size="sm" variant="secondary" className="w-[80%] bg-slate-600 hover:bg-slate-700 text-white border-0" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(show.sonarrId, 'ignored', show.keepEpisodes || 3); }}>
+                      <X className="h-4 w-4 mr-2" /> Ignore
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
-          </MediaHoverCard>
+            
+            <CardContent className="p-3 bg-slate-900/90 backdrop-blur-md relative z-0">
+              <h3 className="font-semibold text-sm line-clamp-1 text-slate-200">{show.name}</h3>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-xs text-slate-400">Keep: {show.keepEpisodes || 3} ep</p>
+                {show.aiRecommended && <Sparkles className="w-3 h-3 text-blue-400" />}
+              </div>
+            </CardContent>
+          </Card>
         )
       })}
     </div>
