@@ -46,11 +46,11 @@ export function Navbar() {
         if (settingsRes.ok) {
           const settings = await settingsRes.json();
           setUrls({
-            radarr: settings.RadarrURL || '',
-            sonarr: settings.SonarrURL || '',
-            jellyseerr: settings.JellyseerrURL || '',
-            plex: settings.PlexURL || '',
-            tautulli: settings.TautulliURL || ''
+            radarr: settings.RadarrExternalURL || settings.RadarrURL || '',
+            sonarr: settings.SonarrExternalURL || settings.SonarrURL || '',
+            jellyseerr: settings.JellyseerrExternalURL || settings.JellyseerrURL || '',
+            plex: settings.PlexExternalURL || settings.PlexURL || '',
+            tautulli: settings.TautulliExternalURL || settings.TautulliURL || ''
           });
         }
         if (statusRes.ok) {

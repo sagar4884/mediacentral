@@ -40,11 +40,11 @@ export default function SettingsPage() {
   
   const [settings, setSettings] = useState<Record<string, string>>({
     UnraidURL: '', UnraidKey: '',
-    RadarrURL: '', RadarrKey: '',
-    SonarrURL: '', SonarrKey: '',
-    JellyseerrURL: '', JellyseerrKey: '',
-    TautulliURL: '', TautulliKey: '',
-    PlexURL: '', PlexToken: '',
+    RadarrURL: '', RadarrKey: '', RadarrExternalURL: '',
+    SonarrURL: '', SonarrKey: '', SonarrExternalURL: '',
+    JellyseerrURL: '', JellyseerrKey: '', JellyseerrExternalURL: '',
+    TautulliURL: '', TautulliKey: '', TautulliExternalURL: '',
+    PlexURL: '', PlexToken: '', PlexExternalURL: '',
     BanDuration1: '0', BanDuration2: '86400000', BanDuration3: '604800000',
     GeminiKey: '', GeminiScoreModel: 'gemini-3.5-flash', GeminiLearnModel: 'gemini-3.1-pro-preview',
     PushoverUserKey: '', PushoverAppToken: '',
@@ -305,13 +305,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="radarr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">URL</Label>
+                  <Label htmlFor="radarr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Internal URL (For Backend)</Label>
                   <Input id="radarr-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.RadarrURL} onChange={e => handleChange('RadarrURL', e.target.value)} placeholder="http://192.168.1.100:7878" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="radarr-key" className="text-xs font-semibold uppercase tracking-wider text-slate-500">API Key</Label>
                   <Input id="radarr-key" type="password" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.RadarrKey} onChange={e => handleChange('RadarrKey', e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="radarr-ext-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">External URL (For Top Navbar Links) [Optional]</Label>
+                <Input id="radarr-ext-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.RadarrExternalURL || ''} onChange={e => handleChange('RadarrExternalURL', e.target.value)} placeholder="https://radarr.yourdomain.com" />
+                <p className="text-xs text-slate-500 mt-1">If left blank, the navbar will use the Internal URL.</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap sm:flex-nowrap justify-between gap-4 border-t border-slate-200/50 dark:border-slate-800/50 pt-6">
@@ -337,13 +342,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="sonarr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">URL</Label>
+                  <Label htmlFor="sonarr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Internal URL (For Backend)</Label>
                   <Input id="sonarr-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.SonarrURL} onChange={e => handleChange('SonarrURL', e.target.value)} placeholder="http://192.168.1.100:8989" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sonarr-key" className="text-xs font-semibold uppercase tracking-wider text-slate-500">API Key</Label>
                   <Input id="sonarr-key" type="password" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.SonarrKey} onChange={e => handleChange('SonarrKey', e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="sonarr-ext-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">External URL (For Top Navbar Links) [Optional]</Label>
+                <Input id="sonarr-ext-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.SonarrExternalURL || ''} onChange={e => handleChange('SonarrExternalURL', e.target.value)} placeholder="https://sonarr.yourdomain.com" />
+                <p className="text-xs text-slate-500 mt-1">If left blank, the navbar will use the Internal URL.</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap sm:flex-nowrap justify-between gap-4 border-t border-slate-200/50 dark:border-slate-800/50 pt-6">
@@ -369,13 +379,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="jellyseerr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">URL</Label>
+                  <Label htmlFor="jellyseerr-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Internal URL (For Backend)</Label>
                   <Input id="jellyseerr-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.JellyseerrURL} onChange={e => handleChange('JellyseerrURL', e.target.value)} placeholder="http://192.168.1.100:5055" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="jellyseerr-key" className="text-xs font-semibold uppercase tracking-wider text-slate-500">API Key</Label>
                   <Input id="jellyseerr-key" type="password" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.JellyseerrKey} onChange={e => handleChange('JellyseerrKey', e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="jellyseerr-ext-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">External URL (For Top Navbar Links) [Optional]</Label>
+                <Input id="jellyseerr-ext-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-purple-500/50 transition-all" value={settings.JellyseerrExternalURL || ''} onChange={e => handleChange('JellyseerrExternalURL', e.target.value)} placeholder="https://requests.yourdomain.com" />
+                <p className="text-xs text-slate-500 mt-1">If left blank, the navbar will use the Internal URL.</p>
               </div>
             </CardContent>
             <CardFooter className="flex flex-wrap sm:flex-nowrap justify-between gap-4 border-t border-slate-200/50 dark:border-slate-800/50 pt-6">
@@ -500,13 +515,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="plex-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Plex URL</Label>
+                  <Label htmlFor="plex-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Internal URL (For Backend)</Label>
                   <Input id="plex-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.PlexURL} onChange={e => handleChange('PlexURL', e.target.value)} placeholder="http://192.168.1.100:32400" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="plex-token" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Plex Token</Label>
                   <Input id="plex-token" type="password" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.PlexToken} onChange={e => handleChange('PlexToken', e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="plex-ext-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">External URL (For Top Navbar Links) [Optional]</Label>
+                <Input id="plex-ext-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.PlexExternalURL || ''} onChange={e => handleChange('PlexExternalURL', e.target.value)} placeholder="https://app.plex.tv" />
+                <p className="text-xs text-slate-500 mt-1">If left blank, the navbar will use the Internal URL.</p>
               </div>
               
               <div className="p-5 bg-slate-100 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -594,13 +614,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="tautulli-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tautulli URL</Label>
+                  <Label htmlFor="tautulli-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Internal URL (For Backend)</Label>
                   <Input id="tautulli-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.TautulliURL} onChange={e => handleChange('TautulliURL', e.target.value)} placeholder="http://192.168.1.100:8181" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tautulli-key" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tautulli API Key</Label>
                   <Input id="tautulli-key" type="password" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.TautulliKey} onChange={e => handleChange('TautulliKey', e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="tautulli-ext-url" className="text-xs font-semibold uppercase tracking-wider text-slate-500">External URL (For Top Navbar Links) [Optional]</Label>
+                <Input id="tautulli-ext-url" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl h-11 focus-visible:ring-amber-500/50 transition-all" value={settings.TautulliExternalURL || ''} onChange={e => handleChange('TautulliExternalURL', e.target.value)} placeholder="https://tautulli.yourdomain.com" />
+                <p className="text-xs text-slate-500 mt-1">If left blank, the navbar will use the Internal URL.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200/50 dark:border-slate-800/50">
                 <div className="space-y-2 flex flex-col justify-center">
