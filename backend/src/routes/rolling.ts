@@ -31,6 +31,7 @@ router.get('/', async (req, res) => {
 
       return {
         ...show,
+        sizeOnDisk: show.sizeOnDisk ? Number(show.sizeOnDisk) : 0,
         rollingId: override?.id || -1,
         sonarrId: Number(show.sourceId),
         status,
