@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Moon, Sun, Activity, Database, Settings, Users, Film, ExternalLink } from "lucide-react"
+import { Moon, Sun, Activity, Database, Settings, Users, Film, ExternalLink, Tv } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
@@ -100,6 +100,7 @@ export function Navbar() {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Activity },
     { name: "Curation", href: "/curation", icon: Film },
+    { name: "Rolling", href: "/rolling", icon: Tv },
     { name: "Plex", href: "/plex", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
   ]

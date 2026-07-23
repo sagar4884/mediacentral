@@ -50,6 +50,7 @@ export default function SettingsPage() {
     PushoverUserKey: '', PushoverAppToken: '',
     PushoverNotifyAutoDelete: 'true', PushoverNotifyManualDelete: 'false', PushoverNotifyPlexBan: 'true', PushoverNotifyAccountSharing: 'true', PushoverNotifySyncCompletion: 'false',
     StorageProvider: 'Unraid', AutoKeepWatchedMedia: 'true', AutoKeepRequestedMedia: 'true', DeletionGracePeriod: '30',
+    EnableAutoRollingAI: 'false', EnableAutoRollingDelete: 'false',
     EnableConcurrentIPProtection: 'false', StreamTerminationMessage: 'You are not allowed to share your account.', TautulliShowWatchThreshold: 'any',
     BanRoleName: 'Temporarily Banned', RevokedRoleName: 'Revoked', AICurationGuidelines: ''
   })
@@ -435,6 +436,28 @@ export default function SettingsPage() {
                   >
                     <option value="true">Enabled (If Jellyseerr tag exists)</option>
                     <option value="false">Disabled</option>
+                  </select>
+                </div>
+                <div className="space-y-2 flex flex-col justify-center">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Auto-Run AI Rolling Scan (Sundays)</Label>
+                  <select 
+                    className="h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                    value={settings.EnableAutoRollingAI || 'false'}
+                    onChange={e => handleChange('EnableAutoRollingAI', e.target.value)}
+                  >
+                    <option value="true">Enabled (Auto-scan for new shows)</option>
+                    <option value="false">Disabled (Manual only)</option>
+                  </select>
+                </div>
+                <div className="space-y-2 flex flex-col justify-center">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Auto-Execute Rolling Deletes (Daily)</Label>
+                  <select 
+                    className="h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                    value={settings.EnableAutoRollingDelete || 'false'}
+                    onChange={e => handleChange('EnableAutoRollingDelete', e.target.value)}
+                  >
+                    <option value="true">Enabled (Auto-delete & unmonitor)</option>
+                    <option value="false">Disabled (Send Pushover alert only)</option>
                   </select>
                 </div>
                 <div className="space-y-2">

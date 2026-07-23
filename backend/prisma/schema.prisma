@@ -89,3 +89,13 @@ model PlexViolation {
   actionTaken String
   createdAt   DateTime @default(now())
 }
+
+model RollingShow {
+  id                 String   @id @default(uuid())
+  sonarrId           Int      @unique
+  name               String
+  status             String   // "active", "ignored", "never_ask_ai"
+  keepEpisodes       Int      @default(3) // How many new episodes must exist before old season is deleted
+  aiRecommended      Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+}

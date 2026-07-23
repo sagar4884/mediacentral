@@ -28,6 +28,7 @@ import aiRouter from './routes/ai';
 import realtimeRouter from './routes/realtime';
 import authRouter from './routes/auth';
 import backupRouter from './routes/backup';
+import rollingRouter from './routes/rolling';
 
 // Routes
 app.get('/api/health', (req, res) => {
@@ -42,6 +43,7 @@ app.use('/api/ai', aiRouter);
 app.use('/api/realtime', realtimeRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/backup', backupRouter);
+app.use('/api/rolling', rollingRouter);
 
 // Import services to start cron jobs
 import { syncService } from './services/syncService';
@@ -50,8 +52,8 @@ import { actionService } from './services/actionService';
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+app.listen(PORT as number, '0.0.0.0', () => {
+  console.log(`Backend server running on http://0.0.0.0:${PORT}`);
   // Start background jobs
   syncService.startCron();
   tautulliMonitor.startCron();
