@@ -238,8 +238,27 @@ router.post('/plex', upload.any(), async (req, res) => {
   
   try {
     const payload = JSON.parse(payloadStr);
-    console.log(`[Webhook] Received Plex Event: ${payload.event}`);
-    // TODO: Implement Plex logic
+    const event = payload.event;
+    console.log(`[Webhook] Received Plex Event: ${event}`);
+    
+    // Map Plex payload to TautulliMonitor format
+    const mappedSession = {
+      user: payload.Account?.title,
+      ip_address: payload.Player?.publicAddress,
+      title: payload.Metadata?.title,
+      session_id: payload.Player?.uuid
+    };
+
+    switch(event) {
+      case 'media.play':
+      case 'media.resume':
+        await tautulliMonitor.handlePlaybackStart(mappedSession);
+        break;
+      case 'media.pause':
+      case 'media.stop':
+        await tautulliMonitor.handlePlaybackStop(mappedSession);
+        break;
+    }
   } catch (e) {
     console.error("Failed to parse Plex payload", e);
   }
@@ -250,8 +269,19 @@ router.post('/plex', upload.any(), async (req, res) => {
 // 5. Jellyseerr Webhook
 router.post('/jellyseerr', async (req, res) => {
   const payload = req.body;
-  console.log(`[Webhook] Received Jellyseerr Event: ${payload.notification_type}`);
-  // TODO: Implement Jellyseerr logic
+  const event = payload.notification_type || payload.event;
+  console.log(`[Webhook] Received Jellyseerr Event: ${event}`);
+  
+  try {
+    // In the future, we can map Jellyseerr requests (Pending, Approved, Available) 
+    // to a dedicated Requests table or UI dashboard in MediaCentral.
+    if (['MEDIA_PENDING', 'MEDIA_APPROVED', 'MEDIA_AVAILABLE', 'MEDIA_DECLINED'].includes(event)) {
+      console.log(`[Jellyseerr] Request Update: ${payload.subject} is now ${event}`);
+    }
+  } catch (error) {
+    console.error("[Webhook] Jellyseerr logic failed:", error);
+  }
+
   res.status(200).json({ success: true });
 });
 
