@@ -370,32 +370,41 @@ Example: {"12": true, "45": false}
 Shows:
 ${JSON.stringify(batch.map((s: any) => ({ id: s.sourceId, title: s.name })))}\n\nOutput only valid JSON.`;
 
-      try {
-        const response = await ai.models.generateContent({
-          model: model,
-          contents: prompt,
-        });
+      let retryCount = 0;
+      let success = false;
+      while (!success && retryCount < 3) {
+        try {
+          const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+          });
 
-        let text = response.text?.trim() || "{}";
-        if (text.startsWith("```json")) text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-        if (text.startsWith("```")) text = text.replace(/```/g, "").trim();
+          let text = response.text?.trim() || "{}";
+          if (text.startsWith("```json")) text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+          if (text.startsWith("```")) text = text.replace(/```/g, "").trim();
 
-        const decisions = JSON.parse(text);
+          const decisions = JSON.parse(text);
 
-        for (const show of batch) {
-          if (decisions[show.sourceId] === true) {
-            await prisma.rollingShow.create({
-              data: {
-                sonarrId: Number(show.sourceId),
-                name: show.name,
-                status: 'pending', // Pending user confirmation
-                aiRecommended: true
-              }
-            });
+          for (const show of batch) {
+            if (decisions[show.sourceId] === true) {
+              await prisma.rollingShow.create({
+                data: {
+                  sonarrId: Number(show.sourceId),
+                  name: show.name,
+                  status: 'pending', // Pending user confirmation
+                  aiRecommended: true
+                }
+              });
+            }
           }
+          success = true;
+        } catch (e: any) {
+          retryCount++;
+          console.error(`AI Rolling Scan Batch Failed (Attempt ${retryCount}/3)`, e.message);
+          if (retryCount >= 3) break;
+          // Exponential backoff: 5s, 15s
+          await new Promise(r => setTimeout(r, 5000 * Math.pow(3, retryCount - 1)));
         }
-      } catch (e) {
-        console.error("AI Rolling Scan Batch Failed", e);
       }
     }
   }

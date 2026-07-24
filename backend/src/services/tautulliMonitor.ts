@@ -29,17 +29,36 @@ export class TautulliMonitor {
       where: { banUntil: { lt: new Date() } }
     });
     for (const bannedUser of expiredBans) {
-      await prisma.plexUser.update({
-        where: { id: bannedUser.id },
-        data: {
-          banUntil: null,
-          warnings: 0,
-          roleId: bannedUser.previousRoleId || bannedUser.roleId,
-          previousRoleId: null
-        }
-      });
-      console.log(`Auto-unbanned user: ${bannedUser.username}`);
-      plexService.pushToPlex(bannedUser.id).catch(e => console.error(e));
+      try {
+        // Attempt Plex API unban first
+        const previousRoleId = bannedUser.previousRoleId || bannedUser.roleId;
+        
+        // Temporarily set role in DB so pushToPlex syncs the unbanned state
+        await prisma.plexUser.update({
+          where: { id: bannedUser.id },
+          data: { roleId: previousRoleId }
+        });
+        
+        await plexService.pushToPlex(bannedUser.id);
+        
+        // Finalize unban state on success
+        await prisma.plexUser.update({
+          where: { id: bannedUser.id },
+          data: {
+            banUntil: null,
+            warnings: 0,
+            previousRoleId: null
+          }
+        });
+        console.log(`Auto-unbanned user: ${bannedUser.username}`);
+      } catch (e) {
+        console.error(`Failed to unban user ${bannedUser.username} in Plex. Will retry next hour.`, e);
+        // Revert temporary role change on failure
+        await prisma.plexUser.update({
+          where: { id: bannedUser.id },
+          data: { roleId: bannedUser.roleId }
+        });
+      }
     }
   }
 

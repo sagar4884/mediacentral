@@ -85,59 +85,60 @@ export class SyncService {
       }
 
       const movies = response.data;
-      if (reportProgress) reportProgress(5); // Fetch complete
+      if (reportProgress) reportProgress(5); 
       
       const total = movies.length;
       let count = 0;
+      const CHUNK_SIZE = 100;
 
-      for (const movie of movies) {
+      for (let i = 0; i < movies.length; i += CHUNK_SIZE) {
         if (checkCancelled && checkCancelled()) break;
-        // Tag detection logic
-        const rawTags = movie.tags || [];
-        const tags = rawTags.map((id: number) => tagMap.get(id) || String(id));
+        const chunk = movies.slice(i, i + CHUNK_SIZE);
         
-        const posterImage = movie.images?.find((img: any) => img.coverType === 'poster');
-        const posterUrl = posterImage ? (posterImage.remoteUrl || posterImage.url) : null;
-        
-        await prisma.mediaCache.upsert({
-          where: {
-            source_sourceId: {
+        const upsertPromises = chunk.map((movie: any) => {
+          const rawTags = movie.tags || [];
+          const tags = rawTags.map((id: number) => tagMap.get(id) || String(id));
+          
+          const posterImage = movie.images?.find((img: any) => img.coverType === 'poster');
+          const posterUrl = posterImage ? (posterImage.remoteUrl || posterImage.url) : null;
+          
+          return prisma.mediaCache.upsert({
+            where: { source_sourceId: { source: 'Radarr', sourceId: movie.id } },
+            update: {
+              name: movie.title,
+              year: movie.year,
+              sizeOnDisk: movie.sizeOnDisk || 0,
+              tmdbId: movie.tmdbId,
+              path: movie.path,
+              tags: JSON.stringify(tags),
+              dateAdded: movie.added ? new Date(movie.added) : null,
+              metadata: JSON.stringify({ overview: movie.overview, status: movie.status, posterUrl })
+            },
+            create: {
               source: 'Radarr',
-              sourceId: movie.id
+              sourceId: movie.id,
+              name: movie.title,
+              year: movie.year,
+              sizeOnDisk: movie.sizeOnDisk || 0,
+              tmdbId: movie.tmdbId,
+              path: movie.path,
+              tags: JSON.stringify(tags),
+              dateAdded: movie.added ? new Date(movie.added) : null,
+              metadata: JSON.stringify({ overview: movie.overview, status: movie.status, posterUrl }),
+              keepStatus: 'waiting'
             }
-          },
-          update: {
-            name: movie.title,
-            year: movie.year,
-            sizeOnDisk: movie.sizeOnDisk || 0,
-            tmdbId: movie.tmdbId,
-            path: movie.path,
-            tags: JSON.stringify(tags),
-            dateAdded: movie.added ? new Date(movie.added) : null,
-            metadata: JSON.stringify({ overview: movie.overview, status: movie.status, posterUrl })
-          },
-          create: {
-            source: 'Radarr',
-            sourceId: movie.id,
-            name: movie.title,
-            year: movie.year,
-            sizeOnDisk: movie.sizeOnDisk || 0,
-            tmdbId: movie.tmdbId,
-            path: movie.path,
-            tags: JSON.stringify(tags),
-            dateAdded: movie.added ? new Date(movie.added) : null,
-            metadata: JSON.stringify({ overview: movie.overview, status: movie.status, posterUrl }),
-            keepStatus: 'waiting' // Default new items to waiting
-          }
+          });
         });
 
-        count++;
+        await prisma.$transaction(upsertPromises);
+        
+        count += chunk.length;
         if (reportProgress && total > 0) {
           reportProgress(5 + (count / total) * 95);
         }
       }
       if (reportProgress) reportProgress(100);
-      console.log(`Synced ${movies.length} movies from Radarr.`);
+      console.log(`Synced ${movies.length} movies from Radarr in batches of ${CHUNK_SIZE}.`);
     } catch (error: any) {
       console.error(`Failed to sync Radarr: ${error.message}`);
       throw error;
@@ -175,54 +176,56 @@ export class SyncService {
       
       const total = shows.length;
       let count = 0;
+      const CHUNK_SIZE = 100;
       
-      for (const show of shows) {
+      for (let i = 0; i < shows.length; i += CHUNK_SIZE) {
         if (checkCancelled && checkCancelled()) break;
-        const rawTags = show.tags || [];
-        const tags = rawTags.map((id: number) => tagMap.get(id) || String(id));
+        const chunk = shows.slice(i, i + CHUNK_SIZE);
         
-        const posterImage = show.images?.find((img: any) => img.coverType === 'poster');
-        const posterUrl = posterImage ? (posterImage.remoteUrl || posterImage.url) : null;
-        
-        await prisma.mediaCache.upsert({
-          where: {
-            source_sourceId: {
+        const upsertPromises = chunk.map((show: any) => {
+          const rawTags = show.tags || [];
+          const tags = rawTags.map((id: number) => tagMap.get(id) || String(id));
+          
+          const posterImage = show.images?.find((img: any) => img.coverType === 'poster');
+          const posterUrl = posterImage ? (posterImage.remoteUrl || posterImage.url) : null;
+          
+          return prisma.mediaCache.upsert({
+            where: { source_sourceId: { source: 'Sonarr', sourceId: show.id } },
+            update: {
+              name: show.title,
+              year: show.year,
+              sizeOnDisk: show.statistics?.sizeOnDisk || 0,
+              tvdbId: show.tvdbId,
+              path: show.path,
+              tags: JSON.stringify(tags),
+              dateAdded: show.added ? new Date(show.added) : null,
+              metadata: JSON.stringify({ overview: show.overview, status: show.status, posterUrl })
+            },
+            create: {
               source: 'Sonarr',
-              sourceId: show.id
+              sourceId: show.id,
+              name: show.title,
+              year: show.year,
+              sizeOnDisk: show.statistics?.sizeOnDisk || 0,
+              tvdbId: show.tvdbId,
+              path: show.path,
+              tags: JSON.stringify(tags),
+              dateAdded: show.added ? new Date(show.added) : null,
+              metadata: JSON.stringify({ overview: show.overview, status: show.status, posterUrl }),
+              keepStatus: 'waiting'
             }
-          },
-          update: {
-            name: show.title,
-            year: show.year,
-            sizeOnDisk: show.statistics?.sizeOnDisk || 0,
-            tvdbId: show.tvdbId,
-            path: show.path,
-            tags: JSON.stringify(tags),
-            dateAdded: show.added ? new Date(show.added) : null,
-            metadata: JSON.stringify({ overview: show.overview, status: show.status, posterUrl })
-          },
-          create: {
-            source: 'Sonarr',
-            sourceId: show.id,
-            name: show.title,
-            year: show.year,
-            sizeOnDisk: show.statistics?.sizeOnDisk || 0,
-            tvdbId: show.tvdbId,
-            path: show.path,
-            tags: JSON.stringify(tags),
-            dateAdded: show.added ? new Date(show.added) : null,
-            metadata: JSON.stringify({ overview: show.overview, status: show.status, posterUrl }),
-            keepStatus: 'waiting'
-          }
+          });
         });
+
+        await prisma.$transaction(upsertPromises);
         
-        count++;
+        count += chunk.length;
         if (reportProgress && total > 0) {
           reportProgress(5 + (count / total) * 95);
         }
       }
       if (reportProgress) reportProgress(100);
-      console.log(`Synced ${shows.length} shows from Sonarr.`);
+      console.log(`Synced ${shows.length} shows from Sonarr in batches of ${CHUNK_SIZE}.`);
     } catch (error: any) {
       console.error(`Failed to sync Sonarr: ${error.message}`);
       throw error;

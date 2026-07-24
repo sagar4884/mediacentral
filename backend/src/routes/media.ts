@@ -30,9 +30,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+let cachedStats: any = null;
+let statsCacheTime: number = 0;
+
 // Get media statistics for the dashboard
 router.get('/stats', async (req, res) => {
   try {
+    if (cachedStats && Date.now() - statsCacheTime < 60000) {
+      return res.json(cachedStats);
+    }
+
     const moviesCount = await prisma.mediaCache.count({ where: { source: 'Radarr' } });
     const showsCount = await prisma.mediaCache.count({ where: { source: 'Sonarr' } });
     
@@ -125,7 +132,7 @@ router.get('/stats', async (req, res) => {
       sizeOnDisk: Number(r.sizeOnDisk)
     }));
 
-    res.json({
+    const responseData = {
       totalMovies: moviesCount,
       totalShows: showsCount,
       storageBytes: totalBytes,
@@ -136,7 +143,12 @@ router.get('/stats', async (req, res) => {
       activeStreams,
       totalBandwidth,
       recent: recentFormatted
-    });
+    };
+
+    cachedStats = responseData;
+    statsCacheTime = Date.now();
+
+    res.json(responseData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch stats' });
