@@ -242,21 +242,8 @@ export default function CurationPage() {
 
   // Background polling for dynamic updates (e.g. AI Curation finishing)
   useEffect(() => {
-    const interval = setInterval(async () => {
-      if (activeStatus === 'ai_rules') {
-        fetchRules(activeSource, true);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/media?status=${activeStatus}&source=${activeSource}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) setItems(data);
-        }
-      } catch (e) {}
-    }, 5000);
-
-    return () => clearInterval(interval);
+    // Polling removed to prevent massive CPU and bandwidth spikes.
+    // The library will load instantly on page mount or via manual refresh.
   }, [activeStatus, activeSource])
 
   const fetchRules = async (source: string, background = false) => {

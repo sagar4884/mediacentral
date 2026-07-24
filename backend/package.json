@@ -18,6 +18,7 @@
     "@types/cookie-parser": "^1.4.10",
     "axios": "^1.18.1",
     "better-sqlite3": "^12.11.1",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@swc/core": "^1.15.46",
     "@swc/jest": "^0.2.39",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",

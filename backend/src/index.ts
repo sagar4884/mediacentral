@@ -7,8 +7,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import compression from 'compression';
 
 const app = express();
+app.use(compression());
 
 const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || 'file:./dev.db' });
 export const prisma = new PrismaClient({ adapter });
@@ -67,11 +69,3 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   console.error("Unhandled Global Error:", err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
-// trigger restart
-// trigger restart 2
-// trigger restart 3
-// trigger restart 4
-// trigger restart 5
-// trigger restart 6
-// trigger restart 7
-// trigger restart 8
