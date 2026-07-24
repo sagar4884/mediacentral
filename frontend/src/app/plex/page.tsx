@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Users, ShieldAlert, AlertTriangle, UserX, FolderOpen, UploadCloud, Crown, Layers, Loader2, Archive, Trash2, Gavel, Database } from "lucide-react"
+import { Users, ShieldAlert, AlertTriangle, UserX, FolderOpen, UploadCloud, Crown, Layers, Loader2, Archive, Trash2, Gavel, Database, RotateCcw } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 
