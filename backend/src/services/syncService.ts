@@ -5,14 +5,41 @@ import { prisma } from '../index';
 export class SyncService {
   constructor() {}
 
+  private cronTask: cron.ScheduledTask | null = null;
+  public currentExpression: string = '0 * * * *';
+
   async startCron() {
     // Default to hourly if not set in DB
     const syncIntervalSetting = await prisma.setting.findUnique({ where: { key: 'SyncInterval' } });
-    const cronExpression = syncIntervalSetting?.value || '0 * * * *'; 
+    this.currentExpression = syncIntervalSetting?.value || '0 * * * *'; 
 
-    console.log(`Starting SyncService cron with expression: ${cronExpression}`);
+    console.log(`Starting SyncService cron with expression: ${this.currentExpression}`);
     
-    cron.schedule(cronExpression, async () => {
+    this.cronTask = cron.schedule(this.currentExpression, async () => {
+      console.log('Running scheduled media sync...');
+      await this.syncRadarr();
+      await this.syncSonarr();
+    });
+  }
+
+  async setCronInterval(expression: string) {
+    if (this.currentExpression === expression) return;
+    
+    console.log(`Updating SyncService cron to: ${expression}`);
+    this.currentExpression = expression;
+    
+    // Save to DB
+    await prisma.setting.upsert({
+      where: { key: 'SyncInterval' },
+      update: { value: expression },
+      create: { key: 'SyncInterval', value: expression }
+    });
+
+    if (this.cronTask) {
+      this.cronTask.stop();
+    }
+    
+    this.cronTask = cron.schedule(this.currentExpression, async () => {
       console.log('Running scheduled media sync...');
       await this.syncRadarr();
       await this.syncSonarr();

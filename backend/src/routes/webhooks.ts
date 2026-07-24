@@ -78,6 +78,10 @@ router.post('/radarr', async (req, res) => {
   console.log(`[Webhook] Received Radarr Event: ${payload.eventType}`);
   
   try {
+    // If we receive ANY Radarr webhook, we know the API is working. 
+    // Downgrade the global sync schedule to daily (3 AM) to save resources.
+    await syncService.setCronInterval('0 3 * * *');
+
     if (['Download', 'MovieAdded', 'Rename'].includes(payload.eventType)) {
       if (payload.movie?.id) {
         await syncRadarrMovie(payload.movie.id);
@@ -144,6 +148,10 @@ router.post('/sonarr', async (req, res) => {
   console.log(`[Webhook] Received Sonarr Event: ${payload.eventType}`);
   
   try {
+    // If we receive ANY Sonarr webhook, we know the API is working. 
+    // Downgrade the global sync schedule to daily (3 AM) to save resources.
+    await syncService.setCronInterval('0 3 * * *');
+
     if (['Download', 'SeriesAdd', 'Rename'].includes(payload.eventType)) {
       if (payload.series?.id) {
         await syncSonarrSeries(payload.series.id);
