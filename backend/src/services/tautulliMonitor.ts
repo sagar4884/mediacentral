@@ -10,6 +10,9 @@ export class TautulliMonitor {
   
   // Track active sessions per user to detect concurrent IPs
   public userSessions: Record<string, any[]> = {};
+
+  // Debounce lock to prevent Plex/Tautulli duplicate webhooks from firing double bans
+  private lastViolationTime: Record<string, number> = {};
   
   constructor() {}
 
@@ -115,6 +118,14 @@ export class TautulliMonitor {
   }
 
   private async handleConcurrentIps(username: string, firstSession: any, currentSession: any) {
+    const now = Date.now();
+    // 10-second debounce lock to prevent duplicate webhook race conditions
+    if (this.lastViolationTime[username] && now - this.lastViolationTime[username] < 10000) {
+      console.log(`Duplicate violation blocked by debounce lock for user: ${username}`);
+      return; 
+    }
+    this.lastViolationTime[username] = now;
+
     console.log(`Concurrent IPs detected for user: ${username}`);
     
     // Find or create user in DB
