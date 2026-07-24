@@ -52,7 +52,7 @@ export default function SettingsPage() {
     StorageProvider: 'Unraid', AutoKeepWatchedMedia: 'true', AutoKeepRequestedMedia: 'true', DeletionGracePeriod: '30',
     EnableAutoRollingAI: 'false', EnableAutoRollingDelete: 'false', GlobalRollingKeepEpisodes: '3',
     EnableConcurrentIPProtection: 'false', StreamTerminationMessage: 'You are not allowed to share your account.', TautulliShowWatchThreshold: 'any',
-    BanRoleName: 'Temporarily Banned', RevokedRoleName: 'Revoked', AICurationGuidelines: ''
+    BanRoleName: 'Temporarily Banned', RevokedRoleName: 'Revoked', AICurationGuidelines: '', WebhookApiKey: ''
   })
 
   useEffect(() => {
@@ -252,10 +252,44 @@ export default function SettingsPage() {
             <TabsTrigger value="notifications" className="justify-start px-4 py-3 text-left data-[state=active]:bg-rose-500/10 data-[state=active]:text-rose-600 dark:data-[state=active]:text-rose-400 rounded-xl transition-all">Notifications</TabsTrigger>
             <TabsTrigger value="security" className="justify-start px-4 py-3 text-left data-[state=active]:bg-slate-500/10 data-[state=active]:text-slate-600 dark:data-[state=active]:text-slate-400 rounded-xl transition-all">Security</TabsTrigger>
             <TabsTrigger value="backup" className="justify-start px-4 py-3 text-left data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-600 dark:data-[state=active]:text-sky-400 rounded-xl transition-all">Backup & Restore</TabsTrigger>
+            <TabsTrigger value="api" className="justify-start px-4 py-3 text-left data-[state=active]:bg-indigo-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 rounded-xl transition-all">Webhooks & API</TabsTrigger>
           </TabsList>
         </div>
         
         <div className="flex-1">
+          <TabsContent value="api" className="m-0 animate-in fade-in zoom-in-95 duration-300">
+            <Card className="glass-panel border-t-4 border-t-indigo-500 shadow-lg">
+              <CardHeader className="bg-slate-900/40 border-b border-slate-800">
+                <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-indigo-500" /> Webhooks & API</CardTitle>
+                <CardDescription>Configure inbound API access to MediaCentral for Webhooks from Radarr, Sonarr, Tautulli, Plex, and Jellyseerr.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-6">
+                <div className="space-y-2">
+                  <Label htmlFor="WebhookApiKey">MediaCentral API Key</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="WebhookApiKey" 
+                      value={settings.WebhookApiKey} 
+                      onChange={(e) => handleChange('WebhookApiKey', e.target.value)} 
+                      placeholder="Click Generate to create an API Key..." 
+                      className="bg-slate-900 border-slate-700 font-mono text-sm text-indigo-400"
+                      readOnly
+                    />
+                    <Button variant="secondary" onClick={() => {
+                      const newKey = crypto.randomUUID();
+                      handleChange('WebhookApiKey', newKey);
+                      toast.success("New API Key generated. Remember to Save All Settings!");
+                    }}>Generate</Button>
+                    <Button variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(settings.WebhookApiKey);
+                      toast.success("API Key copied to clipboard");
+                    }}>Copy</Button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">Append this key to your webhook URLs in Radarr/Sonarr like this: <code className="bg-slate-800 px-1 py-0.5 rounded text-amber-300">http://&lt;your-ip&gt;:4000/api/webhooks/radarr?apikey={settings.WebhookApiKey || 'YOUR_KEY'}</code></p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="unraid" className="m-0 animate-in fade-in zoom-in-95 duration-300">
           <Card className="glass-panel border-t-4 border-t-indigo-500 shadow-lg">
             <CardHeader className="pb-6">

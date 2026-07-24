@@ -29,6 +29,7 @@ import realtimeRouter from './routes/realtime';
 import authRouter from './routes/auth';
 import backupRouter from './routes/backup';
 import rollingRouter from './routes/rolling';
+import webhooksRouter from './routes/webhooks';
 
 // Routes
 app.get('/api/health', (req, res) => {
@@ -44,6 +45,7 @@ app.use('/api/realtime', realtimeRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/rolling', rollingRouter);
+app.use('/api/webhooks', webhooksRouter);
 
 // Import services to start cron jobs
 import { syncService } from './services/syncService';
