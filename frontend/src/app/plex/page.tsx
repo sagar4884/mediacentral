@@ -176,6 +176,17 @@ export default function PlexPage() {
     } catch (e) { toast.error("Network error") }
   }
 
+  const handleManualUnban = async (username: string) => {
+    if (!confirm(`Are you sure you want to unban ${username} and restore their access?`)) return;
+    try {
+      const res = await fetch(`/api/plex/unban/${username}`, { method: 'POST' })
+      if (res.ok) {
+        toast.success(`Successfully unbanned ${username}`)
+        fetchData()
+      } else toast.error("Failed to unban user")
+    } catch (e) { toast.error("Network error") }
+  }
+
   const handleToggleImmunity = async (userId: string, current: boolean) => {
     try {
       const res = await fetch(`/api/plex/users/${userId}/immune`, {
@@ -327,9 +338,8 @@ export default function PlexPage() {
           </p>
         </div>
         <div className="glass-panel p-2 rounded-2xl flex items-center gap-2 border border-blue-900/30">
-          <Button variant="outline" onClick={handleSyncPlex} className="rounded-xl border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            <Database className="mr-2 h-4 w-4" />
-            Pull all from Plex
+          <Button onClick={handleSyncPlex} className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-indigo-500/25 transition-all">
+            <Database className="mr-2 h-4 w-4" /> Pull all from Plex
           </Button>
           <Button onClick={handlePushToPlex} disabled={pushing} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all">
             <UploadCloud className="mr-2 h-4 w-4" /> {pushing ? 'Pushing...' : 'Push all to Plex'}
@@ -536,9 +546,17 @@ export default function PlexPage() {
                             className="data-[state=checked]:bg-amber-500 scale-75 origin-right"
                           />
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => handleManualBan(user.id)} className="h-7 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-600 px-2 rounded-md">
-                          <Gavel className="w-3.5 h-3.5 mr-1" /> Ban
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {!isBanned ? (
+                            <Button variant="ghost" size="sm" onClick={() => handleManualBan(user.id)} className="h-7 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-600 px-2 rounded-md">
+                              <Gavel className="w-3.5 h-3.5 mr-1" /> Ban
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" onClick={() => handleManualUnban(user.id)} className="h-7 text-xs text-green-500 hover:bg-green-500/10 hover:text-green-600 px-2 rounded-md">
+                              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Unban
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     

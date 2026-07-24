@@ -1,0 +1,16 @@
+{
+  "name": "MediaCentral",
+  "short_name": "MediaCentral",
+  "description": "Secure, robust, full-stack local web application for media auditing, maintenance, and Plex management.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
