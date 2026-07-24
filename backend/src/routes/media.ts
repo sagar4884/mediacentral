@@ -18,10 +18,21 @@ router.get('/', async (req, res) => {
       where: whereClause,
       orderBy: { createdAt: 'desc' }
     });
-    const formattedMedia = media.map((m: any) => ({
-      ...m,
-      sizeOnDisk: Number(m.sizeOnDisk)
-    }));
+    const formattedMedia = media.map((m: any) => {
+      let strippedMetadata = "{}";
+      try {
+        const parsed = JSON.parse(m.metadata || "{}");
+        if (parsed.posterUrl) {
+          strippedMetadata = JSON.stringify({ posterUrl: parsed.posterUrl });
+        }
+      } catch(e) {}
+      
+      return {
+        ...m,
+        sizeOnDisk: Number(m.sizeOnDisk),
+        metadata: strippedMetadata
+      };
+    });
     
     res.json(formattedMedia);
   } catch (error) {
@@ -127,10 +138,21 @@ router.get('/stats', async (req, res) => {
       orderBy: { updatedAt: 'desc' }
     });
 
-    const recentFormatted = recent.map((r: any) => ({
-      ...r,
-      sizeOnDisk: Number(r.sizeOnDisk)
-    }));
+    const recentFormatted = recent.map((r: any) => {
+      let strippedMetadata = "{}";
+      try {
+        const parsed = JSON.parse(r.metadata || "{}");
+        if (parsed.posterUrl) {
+          strippedMetadata = JSON.stringify({ posterUrl: parsed.posterUrl });
+        }
+      } catch(e) {}
+      
+      return {
+        ...r,
+        sizeOnDisk: Number(r.sizeOnDisk),
+        metadata: strippedMetadata
+      };
+    });
 
     const responseData = {
       totalMovies: moviesCount,

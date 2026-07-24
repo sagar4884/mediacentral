@@ -89,7 +89,7 @@ export function Navbar() {
     // Poll settings every 2 minutes
     const staticInterval = setInterval(fetchStatic, 120000);
     // Poll realtime data every 5 seconds
-    const realtimeInterval = setInterval(fetchRealtime, 5000);
+    const realtimeInterval = setInterval(fetchRealtime, 15000);
     
     return () => {
       clearInterval(staticInterval);

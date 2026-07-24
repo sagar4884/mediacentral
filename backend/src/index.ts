@@ -32,22 +32,26 @@ import authRouter from './routes/auth';
 import backupRouter from './routes/backup';
 import rollingRouter from './routes/rolling';
 import webhooksRouter from './routes/webhooks';
+import { authMiddleware } from './middleware/auth';
 
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/api/settings', settingsRouter);
-app.use('/api/tasks', tasksRouter);
-app.use('/api/media', mediaRouter);
-app.use('/api/plex', plexRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/realtime', realtimeRouter);
-app.use('/api/auth', authRouter);
-app.use('/api/backup', backupRouter);
-app.use('/api/rolling', rollingRouter);
-app.use('/api/webhooks', webhooksRouter);
+// API Routes
+app.use('/api/webhooks', webhooksRouter); // Webhooks rely on their own API key
+app.use('/api/auth', authRouter); // Auth handles its own login/verify
+
+// Protected API Routes
+app.use('/api/settings', authMiddleware, settingsRouter);
+app.use('/api/tasks', authMiddleware, tasksRouter);
+app.use('/api/media', authMiddleware, mediaRouter);
+app.use('/api/plex', authMiddleware, plexRouter);
+app.use('/api/rolling', authMiddleware, rollingRouter);
+app.use('/api/backup', authMiddleware, backupRouter);
+app.use('/api/ai', authMiddleware, aiRouter);
+app.use('/api/realtime', authMiddleware, realtimeRouter);
 
 // Import services to start cron jobs
 import { syncService } from './services/syncService';

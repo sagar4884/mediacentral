@@ -56,7 +56,7 @@ export function GlobalProgress() {
       }
     };
 
-    const interval = setInterval(checkTasks, 200);
+    const interval = setInterval(checkTasks, 2000);
     checkTasks();
 
     return () => clearInterval(interval);

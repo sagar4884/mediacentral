@@ -60,7 +60,7 @@ export default function DashboardPage() {
     
     fetchRealtime();
     // Poll every 5 seconds
-    const interval = setInterval(fetchRealtime, 5000);
+    const interval = setInterval(fetchRealtime, 15000);
     return () => clearInterval(interval);
   }, [])
 
