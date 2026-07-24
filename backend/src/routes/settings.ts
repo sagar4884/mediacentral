@@ -72,8 +72,7 @@ router.post('/sync', async (req, res) => {
         taskId = taskQueue.enqueue('Sync Sonarr', (id, progress, checkCancelled) => syncService.syncSonarr(id, progress, checkCancelled), true);
       } else if (srv === 'tautulli') {
         taskId = taskQueue.enqueue('Sync Tautulli', async (id, progress, checkCancelled) => {
-          progress(0);
-          await tautulliMonitor.checkStreams();
+          // Removed checkStreams since we rely on webhooks
           progress(100);
         });
       } else if (srv === 'plex') {
@@ -168,7 +167,6 @@ router.post('/sync', async (req, res) => {
         progress(0);
         if (!checkCancelled()) await syncService.syncRadarr(id, (p) => progress(p * 0.4), checkCancelled);
         if (!checkCancelled()) await syncService.syncSonarr(id, (p) => progress(40 + p * 0.4), checkCancelled);
-        if (!checkCancelled()) await tautulliMonitor.checkStreams();
         progress(100);
         await sendSyncNotification('Global Media Sync completed successfully.');
       });

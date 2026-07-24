@@ -173,18 +173,24 @@ router.post('/sonarr', async (req, res) => {
 });
 
 // 3. Tautulli Webhook
+import { tautulliMonitor } from '../services/tautulliMonitor';
+
 router.post('/tautulli', async (req, res) => {
   const payload = req.body;
   const event = payload.event; // e.g. "playback_start", "playback_stop", etc.
-  console.log(`[Webhook] Received Tautulli Event: ${event}`);
+  console.log(`[Webhook] Received Tautulli Event: ${event || 'unknown'}`);
   
   try {
     switch(event) {
       case 'playback_start':
+      case 'playback_resume':
+        await tautulliMonitor.handlePlaybackStart(payload);
+        break;
       case 'playback_stop':
       case 'playback_pause':
-      case 'playback_resume':
       case 'playback_error':
+        await tautulliMonitor.handlePlaybackStop(payload);
+        break;
       case 'watched':
         // Handle playback tracking (e.g., mark as rolling, update AI score, etc.)
         break;

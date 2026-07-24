@@ -5,7 +5,7 @@ import { prisma } from '../index';
 export class SyncService {
   constructor() {}
 
-  private cronTask: cron.ScheduledTask | null = null;
+  private cronTask: any = null;
   public currentExpression: string = '0 * * * *';
 
   async startCron() {

@@ -8,14 +8,36 @@ export class TautulliMonitor {
   // Store currently active stream item IDs (TMDB/TVDB/RatingKey) to protect from deletion
   public activeStreams: Set<string> = new Set();
   
+  // Track active sessions per user to detect concurrent IPs
+  public userSessions: Record<string, any[]> = {};
+  
   constructor() {}
 
   async startCron() {
-    // Check every 2 minutes for active streams and concurrent IPs
-    cron.schedule('*/2 * * * *', async () => {
-      console.log('Running Tautulli monitor...');
-      await this.checkStreams();
+    // Check every hour to auto-unban expired bans
+    cron.schedule('0 * * * *', async () => {
+      console.log('Running Tautulli hourly auto-unban check...');
+      await this.autoUnban();
     });
+  }
+
+  async autoUnban() {
+    const expiredBans = await prisma.plexUser.findMany({
+      where: { banUntil: { lt: new Date() } }
+    });
+    for (const bannedUser of expiredBans) {
+      await prisma.plexUser.update({
+        where: { id: bannedUser.id },
+        data: {
+          banUntil: null,
+          warnings: 0,
+          roleId: bannedUser.previousRoleId || bannedUser.roleId,
+          previousRoleId: null
+        }
+      });
+      console.log(`Auto-unbanned user: ${bannedUser.username}`);
+      plexService.pushToPlex(bannedUser.id).catch(e => console.error(e));
+    }
   }
 
   private async getSetting(key: string): Promise<string | null> {
@@ -42,69 +64,53 @@ export class TautulliMonitor {
     });
   }
 
-  async checkStreams() {
-    try {
-      const url = await this.getSetting('TautulliURL');
-      const apiKey = await this.getSetting('TautulliKey');
-      if (!url || !apiKey) return;
+  async handlePlaybackStart(session: any) {
+    if (!session || !session.user || !session.ip_address) return;
+    
+    // Protect from deletion
+    if (session.title) {
+      this.activeStreams.add(session.title);
+    }
 
-      const response = await axios.get(`${url}/api/v2`, {
-        params: { apikey: apiKey, cmd: 'get_activity' }
-      });
-
-      const sessions = response.data?.response?.data?.sessions || [];
+    // Check for concurrent IPs
+    const enableIP = await this.getSetting('EnableConcurrentIPProtection');
+    if (enableIP !== 'false') {
+      const username = session.user;
+      const ip = session.ip_address;
       
-      // Auto-unban expired bans
-      const expiredBans = await prisma.plexUser.findMany({
-        where: { banUntil: { lt: new Date() } }
-      });
-      for (const bannedUser of expiredBans) {
-        await prisma.plexUser.update({
-          where: { id: bannedUser.id },
-          data: {
-            banUntil: null,
-            warnings: 0,
-            roleId: bannedUser.previousRoleId || bannedUser.roleId,
-            previousRoleId: null
-          }
-        });
-        console.log(`Auto-unbanned user: ${bannedUser.username}`);
-        plexService.pushToPlex(bannedUser.id).catch(e => console.error(e));
+      if (!this.userSessions[username]) {
+        this.userSessions[username] = [];
       }
       
-      // Update active streams for deletion protection
-      this.activeStreams.clear();
-      sessions.forEach((s: any) => {
-        // Tautulli provides guid or ratingKey we can map. 
-        // For simplicity, store the ratingKey or title
-        this.activeStreams.add(s.title);
-      });
-
-      // Check for concurrent IPs per user
-      const enableIP = await this.getSetting('EnableConcurrentIPProtection');
-      if (enableIP !== 'false') {
-        const userSessions: Record<string, any[]> = {};
-        
-        for (const session of sessions) {
-          const username = session.user;
-          const ip = session.ip_address;
-          
-          if (!userSessions[username]) {
-            userSessions[username] = [];
-          }
-          
-          // If a user has multiple sessions with different IPs, flag them
-          const hasDifferentIp = userSessions[username].some(existing => existing.ip_address !== ip);
-          
-          if (hasDifferentIp) {
-            await this.handleConcurrentIps(username, userSessions[username][0], session);
-          } else {
-            userSessions[username].push(session);
-          }
+      const hasDifferentIp = this.userSessions[username].some(existing => existing.ip_address !== ip);
+      
+      if (hasDifferentIp) {
+        await this.handleConcurrentIps(username, this.userSessions[username][0], session);
+      } else {
+        // Prevent duplicate session_ids from inflating the array
+        const exists = this.userSessions[username].find(s => s.session_id === session.session_id);
+        if (!exists) {
+          this.userSessions[username].push(session);
         }
       }
-    } catch (error: any) {
-      console.error(`Failed to monitor Tautulli: ${error.message}`);
+    }
+  }
+
+  async handlePlaybackStop(session: any) {
+    if (!session) return;
+    
+    if (session.title) {
+      this.activeStreams.delete(session.title);
+    }
+    
+    if (session.user) {
+      const username = session.user;
+      if (this.userSessions[username]) {
+        this.userSessions[username] = this.userSessions[username].filter(s => s.session_id !== session.session_id);
+        if (this.userSessions[username].length === 0) {
+          delete this.userSessions[username];
+        }
+      }
     }
   }
 
